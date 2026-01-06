@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Set Availability - Doctor Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .date-card {
+        border: 2px solid #e0e0e0;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+    }
+    .date-card:hover {
+        border-color: #667eea;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+    }
+    .slot-checkbox {
+        display: none;
+    }
+    .slot-label {
+        display: inline-block;
+        padding: 10px 20px;
+        margin: 5px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        min-width: 100px;
+        text-align: center;
+    }
+    .slot-label:hover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+    .slot-checkbox:checked + .slot-label {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-color: #667eea;
+    }
+    .session-title {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        display: inline-block;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+    .availability-list .badge {
+        font-size: 12px;
+        padding: 5px 10px;
+        margin: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <h1>📅 Set Your Availability</h1>
+        <p class="mb-0 opacity-75">Select dates and time slots when you're available</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Debug Info -->
+    {% if availabilities %}
+    <div class="alert alert-info mb-3">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Debug:</strong> Found {{ availabilities|length }} scheduled date(s)
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <!-- Set Availability Form -->
+        <div class="col-lg-7">
+            <div class="card shadow" style="border-radius: 20px;">
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 20px 20px 0 0;">
+                    <h5 class="mb-0"><i class="bi bi-calendar-plus me-2"></i>Set Availability for a Date</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" id="availabilityForm">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold"><i class="bi bi-calendar3 me-2"></i>Select Date</label>
+                            <input type="date" class="form-control form-control-lg" id="availability_date" 
+                                   name="availability_date" required>
+                            <small class="text-muted">Select a future date to set your availability</small>
+                        </div>
+                        
+                        <div id="slotsSection">
+                            <!-- Morning Slots -->
+                            <div class="mb-4">
+                                <span class="session-title"><i class="bi bi-brightness-high me-2"></i>Morning (9 AM - 1 PM)</span>
+                                <div class="d-flex flex-wrap">
+                                    {% for slot in morning_slots %}
+                                    <div>
+                                        <input type="checkbox" class="slot-checkbox" id="slot_{{ slot.replace(':', '') }}" 
+                                               name="slot_{{ slot.replace(':', '') }}" value="1">
+                                        <label class="slot-label" for="slot_{{ slot.replace(':', '') }}">
+                                            {% set hour = slot.split(':')[0]|int %}
+                                            {{ hour if hour <= 12 else hour - 12 }}:00 {{ 'AM' if hour < 12 else 'PM' }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <!-- Evening Slots -->
+                            <div class="mb-4">
+                                <span class="session-title"><i class="bi bi-moon-stars me-2"></i>Evening (6 PM - 10 PM)</span>
+                                <div class="d-flex flex-wrap">
+                                    {% for slot in evening_slots %}
+                                    <div>
+                                        <input type="checkbox" class="slot-checkbox" id="slot_{{ slot.replace(':', '') }}" 
+                                               name="slot_{{ slot.replace(':', '') }}" value="1">
+                                        <label class="slot-label" for="slot_{{ slot.replace(':', '') }}">
+                                            {% set hour = slot.split(':')[0]|int %}
+                                            {{ hour - 12 }}:00 PM
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" onclick="selectAll()">
+                                <i class="bi bi-check-all me-2"></i>Select All
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearAll()">
+                                <i class="bi bi-x-circle me-2"></i>Clear All
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                                <i class="bi bi-save me-2"></i>Save Availability
+                            </button>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Tip:</strong> If you don't select any slots, the date will be marked as OFF day.
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upcoming Availability (Next 5 including today) -->
+        <div class="col-lg-5">
+            <div class="card shadow" style="border-radius: 20px;">
+                <div class="card-header bg-success text-white" style="border-radius: 20px 20px 0 0;">
+                    <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Your Scheduled Availability (Next 5 Days)</h5>
+                </div>
+                <div class="card-body p-4 availability-list" style="max-height: 600px; overflow-y: auto;">
+                    {% if availabilities and availabilities|length > 0 %}
+                        <!-- Debug: Show raw data -->
+                        <div class="alert alert-warning mb-3">
+                            <small><strong>Debug Data:</strong> {{ availabilities|length }} entries found</small>
+                        </div>
+                        
+                        {% for avail in availabilities[:5] %}
+                        <div class="date-card">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-2 text-primary">
+                                        <i class="bi bi-calendar-event me-2"></i>
+                                        {{ avail.availability_date }}
+                                        {% if loop.index == 1 %}
+                                        <span class="badge bg-info ms-2">Next</span>
+                                        {% endif %}
+                                    </h6>
+                                    
+                                    <!-- Debug: Show slot values -->
+                                    <div class="small text-muted mb-2">
+                                        <details>
+                                            <summary>Debug Slot Values</summary>
+                                            <pre style="font-size: 10px;">
+slot_09: {{ avail.slot_09 }} ({{ avail.slot_09|int }})
+slot_10: {{ avail.slot_10 }} ({{ avail.slot_10|int }})
+slot_11: {{ avail.slot_11 }} ({{ avail.slot_11|int }})
+slot_12: {{ avail.slot_12 }} ({{ avail.slot_12|int }})
+slot_13: {{ avail.slot_13 }} ({{ avail.slot_13|int }})
+slot_18: {{ avail.slot_18 }} ({{ avail.slot_18|int }})
+slot_19: {{ avail.slot_19 }} ({{ avail.slot_19|int }})
+slot_20: {{ avail.slot_20 }} ({{ avail.slot_20|int }})
+slot_21: {{ avail.slot_21 }} ({{ avail.slot_21|int }})
+slot_22: {{ avail.slot_22 }} ({{ avail.slot_22|int }})
+                                            </pre>
+                                        </details>
+                                    </div>
+                                    
+                                    <div>
+                                        {% set has_slots = false %}
+                                        
+                                        {% if avail.slot_09|int == 1 %}
+                                            <span class="badge bg-primary">9 AM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_10|int == 1 %}
+                                            <span class="badge bg-primary">10 AM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_11|int == 1 %}
+                                            <span class="badge bg-primary">11 AM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_12|int == 1 %}
+                                            <span class="badge bg-primary">12 PM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_13|int == 1 %}
+                                            <span class="badge bg-primary">1 PM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_18|int == 1 %}
+                                            <span class="badge bg-info">6 PM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_19|int == 1 %}
+                                            <span class="badge bg-info">7 PM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_20|int == 1 %}
+                                            <span class="badge bg-info">8 PM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_21|int == 1 %}
+                                            <span class="badge bg-info">9 PM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        {% if avail.slot_22|int == 1 %}
+                                            <span class="badge bg-info">10 PM</span>
+                                            {% set has_slots = true %}
+                                        {% endif %}
+                                        
+                                        {% if not has_slots %}
+                                            <span class="badge bg-danger">ERROR: No slots showing but data exists</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" type="button"
+                                        onclick="loadDate('{{ avail.availability_date }}')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        {% if availabilities|length > 5 %}
+                        <div class="text-center text-muted mt-3">
+                            <small>Showing next 5 days. You have {{ availabilities|length }} total scheduled dates.</small>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-calendar-x" style="font-size: 50px; color: #ccc;"></i>
+                        <p class="text-muted mt-3 mb-2">No availability set yet.</p>
+                        <p class="small text-muted">Select a date and time slots above to get started.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card mt-3" style="border-radius: 15px;">
+                <div class="card-body">
+                    <h6 class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Important</h6>
+                    <ul class="small text-muted mb-0">
+                        <li>Only dates with availability set will be bookable by patients</li>
+                        <li>Each slot can have up to 15 patients</li>
+                        <li>Showing your next 5 scheduled dates</li>
+                        <li>You can edit availability anytime</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const dateInput = document.getElementById('availability_date');
+const today = new Date().toISOString().split('T')[0];
+dateInput.min = today;
+
+dateInput.addEventListener('change', function() {
+    loadDate(this.value);
+});
+
+function loadDate(dateStr) {
+    dateInput.value = dateStr;
+    
+    console.log('Loading availability for:', dateStr);
+    
+    fetch(`/api/doctor/availability/${dateStr}`)
+        .then(r => r.json())
+        .then(data => {
+            console.log('Received data:', data);
+            
+            // Clear all checkboxes first
+            document.querySelectorAll('.slot-checkbox').forEach(cb => cb.checked = false);
+            
+            if (data.exists && data.slots) {
+                Object.entries(data.slots).forEach(([time, enabled]) => {
+                    const id = 'slot_' + time.replace(':', '');
+                    const cb = document.getElementById(id);
+                    console.log(`  ${time}: ${enabled} (checkbox: ${id}, found: ${!!cb})`);
+                    if (cb && (enabled === 1 || enabled === true || enabled === '1')) {
+                        cb.checked = true;
+                    }
+                });
+            }
+        })
+        .catch(err => console.error('Error:', err));
+}
+
+function selectAll() {
+    document.querySelectorAll('.slot-checkbox').forEach(cb => cb.checked = true);
+}
+
+function clearAll() {
+    document.querySelectorAll('.slot-checkbox').forEach(cb => cb.checked = false);
+}
+</script>
+{% endblock %}

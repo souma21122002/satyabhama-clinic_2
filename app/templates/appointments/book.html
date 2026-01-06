@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Book Appointment{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-calendar-plus me-2"></i>Book an Appointment</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="bookingForm">
+                        <div class="mb-3">
+                            <label for="doctor_id" class="form-label">Select Doctor</label>
+                            <select class="form-select" id="doctor_id" name="doctor_id" required>
+                                <option value="">-- Select a Doctor --</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}">Dr. {{ doctor.name if doctor.name else doctor.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="appointment_date" class="form-label">Select Date</label>
+                            <input type="date" class="form-control" id="appointment_date" name="appointment_date" 
+                                   min="{{ today }}" required disabled>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="appointment_time" class="form-label">Select Time Slot</label>
+                            <select class="form-select" id="appointment_time" name="appointment_time" required disabled>
+                                <option value="">-- Select date first --</option>
+                            </select>
+                            <div id="no-slots-message" class="text-muted mt-2" style="display: none;">
+                                No available slots for this date. Please select another date.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reason" class="form-label">Reason for Visit</label>
+                            <textarea class="form-control" id="reason" name="reason" rows="3" 
+                                      placeholder="Briefly describe your symptoms or reason for the appointment"></textarea>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check me-2"></i>Book Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const doctorSelect = document.getElementById('doctor_id');
+    const dateInput = document.getElementById('appointment_date');
+    const timeSelect = document.getElementById('appointment_time');
+    const noSlotsMsg = document.getElementById('no-slots-message');
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+    
+    doctorSelect.addEventListener('change', function() {
+        if (this.value) {
+            dateInput.disabled = false;
+            timeSelect.innerHTML = '<option value="">-- Select date first --</option>';
+            timeSelect.disabled = true;
+        } else {
+            dateInput.disabled = true;
+            timeSelect.disabled = true;
+        }
+    });
+    
+    dateInput.addEventListener('change', function() {
+        if (this.value && doctorSelect.value) {
+            fetchAvailableSlots();
+        }
+    });
+    
+    function fetchAvailableSlots() {
+        const doctorId = doctorSelect.value;
+        const date = dateInput.value;
+        
+        timeSelect.innerHTML = '<option value="">Loading...</option>';
+        timeSelect.disabled = true;
+        noSlotsMsg.style.display = 'none';
+        
+        fetch(`/appointments/available-slots/${doctorId}/${date}`)
+            .then(response => response.json())
+            .then(data => {
+                timeSelect.innerHTML = '';
+                
+                if (data.slots && data.slots.length > 0) {
+                    timeSelect.innerHTML = '<option value="">-- Select a time slot --</option>';
+                    data.slots.forEach(slot => {
+                        const option = document.createElement('option');
+                        option.value = slot;
+                        option.textContent = formatTime(slot);
+                        timeSelect.appendChild(option);
+                    });
+                    timeSelect.disabled = false;
+                } else {
+                    timeSelect.innerHTML = '<option value="">No slots available</option>';
+                    noSlotsMsg.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+            });
+    }
+    
+    function formatTime(timeStr) {
+        const [hours, minutes] = timeStr.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    }
+});
+</script>
+{% endblock %}

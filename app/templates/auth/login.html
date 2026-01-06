@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Login - Homeopathy Healing Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card p-5 border-success" style="border-width: 2px;">
+                <div class="text-center mb-4">
+                    <div class="display-1">🧑‍🤝‍🧑</div>
+                    <h2 class="text-success">Patient Portal</h2>
+                    <p class="text-muted">Login to your account</p>
+                </div>
+                
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" name="email" class="form-control form-control-lg" required 
+                               placeholder="your@email.com">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-control form-control-lg" required 
+                               placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn btn-success btn-lg w-100 mb-3">
+                        <i class="bi bi-box-arrow-in-right"></i> Login
+                    </button>
+                </form>
+                
+                <hr>
+                <p class="text-center mb-2">
+                    Don't have an account? <a href="/register">Register here</a>
+                </p>
+                <p class="text-center mb-0">
+                    <a href="/doctor/login" class="text-primary"><i class="bi bi-person-badge"></i> Doctor Login →</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

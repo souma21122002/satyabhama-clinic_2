@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard - Satyabhama Clinic{% endblock %}
+
+{% block extra_css %}
+<style>
+    .section-card {
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 40px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .section-header {
+        padding: 30px;
+        color: white;
+        position: relative;
+    }
+    .section-header h3 {
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    .section-header p {
+        margin: 5px 0 0 0;
+        opacity: 0.9;
+    }
+    .stats-row {
+        display: flex;
+        gap: 15px;
+        margin-top: 20px;
+    }
+    .stat-box {
+        background: rgba(255,255,255,0.2);
+        padding: 15px 20px;
+        border-radius: 12px;
+        flex: 1;
+        text-align: center;
+    }
+    .stat-box h4 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .stat-box p {
+        margin: 5px 0 0 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .consultation-gradient {
+        background: linear-gradient(135deg, #4caf50, #45a049);
+    }
+    .appointment-gradient {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4caf50, #45a049); display: flex; align-items: center; justify-content: center; border: 3px solid white;">
+                    <span style="font-size: 50px;">👨‍⚕️</span>
+                </div>
+            </div>
+            <div class="col">
+                <h1>👨‍⚕️ Doctor Dashboard</h1>
+                <p class="mb-0 opacity-75">Welcome, {{ session.user.name }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- SECTION 1: ONLINE CONSULTATIONS -->
+    <div class="section-card">
+        <div class="section-header consultation-gradient">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3><i class="bi bi-chat-dots me-3"></i>Online Consultations</h3>
+                    <p>Review and respond to patient symptoms submitted online</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <h4>{{ pending_count }}</h4>
+                            <p>Pending</p>
+                        </div>
+                        <div class="stat-box">
+                            <h4>{{ replied_count }}</h4>
+                            <p>Replied</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0 text-success">
+                    <i class="bi bi-exclamation-circle me-2"></i>Pending Consultations ({{ pending_count }})
+                </h5>
+                <a href="/doctor/patients" class="btn btn-outline-success">
+                    <i class="bi bi-people"></i> View All Patients
+                </a>
+            </div>
+            
+            {% if pending_consultations %}
+                {% for c in pending_consultations[:3] %}
+                <div class="card mb-3 border-start border-warning border-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <span class="badge bg-warning text-dark mb-2">PENDING</span>
+                                <h6 class="mb-1 fw-bold">{{ c.patient_name }}</h6>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar me-1"></i>
+                                    {{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at and not (c.created_at is string) else c.created_at }}
+                                    <span class="mx-2">|</span>
+                                    <i class="bi bi-thermometer-half me-1"></i>{{ c.severity or 'N/A' }}
+                                </small>
+                            </div>
+                            <a href="/doctor/reply/{{ c.id }}" class="btn btn-success">
+                                <i class="bi bi-reply"></i> Reply Now
+                            </a>
+                        </div>
+                        
+                        <p class="mb-2"><strong>Symptoms:</strong> {{ c.symptoms[:150] if c.symptoms else 'N/A' }}{% if c.symptoms and c.symptoms|length > 150 %}...{% endif %}</p>
+                        
+                        <div class="d-flex gap-2">
+                            {% if c.voice_record %}
+                            <span class="badge bg-danger"><i class="bi bi-mic-fill me-1"></i>Voice</span>
+                            {% endif %}
+                            {% if c.images and c.images|length > 0 %}
+                            <span class="badge bg-primary"><i class="bi bi-images me-1"></i>{{ c.images|length }} Images</span>
+                            {% endif %}
+                            {% if c.medical_history %}
+                            <span class="badge bg-info"><i class="bi bi-file-medical me-1"></i>History</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                {% if pending_count > 3 %}
+                <div class="text-center mt-3">
+                    <a href="/doctor/dashboard#all-consultations" class="btn btn-outline-success">
+                        <i class="bi bi-arrow-down-circle me-2"></i>View All {{ pending_count }} Pending
+                    </a>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-4 bg-light rounded">
+                    <i class="bi bi-check-circle" style="font-size: 50px; color: #4caf50;"></i>
+                    <p class="text-muted mt-3 mb-0">✨ All consultations have been replied to!</p>
+                </div>
+            {% endif %}
+            
+            <!-- Recently Replied -->
+            {% if replied_consultations %}
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+                <i class="bi bi-check-circle me-2"></i>Recently Replied ({{ replied_count }} total)
+            </h6>
+            <div class="row g-2">
+                {% for c in replied_consultations[:4] %}
+                <div class="col-md-6">
+                    <div class="card border-success">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted d-block">{{ c.patient_name }}</small>
+                                    <small class="text-muted">
+                                        {{ c.created_at.strftime('%Y-%m-%d') if c.created_at and not (c.created_at is string) else c.created_at[:10] if c.created_at else 'N/A' }}
+                                    </small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success me-1">Replied</span>
+                                    <a href="/doctor/reply/{{ c.id }}" class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- SECTION 2: OFFLINE APPOINTMENTS -->
+    <div class="section-card">
+        <div class="section-header appointment-gradient">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3><i class="bi bi-calendar-check me-3"></i>Offline Appointments</h3>
+                    <p>Manage clinic visit appointments and schedules</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="action-buttons">
+                        <a href="{{ url_for('doctor_availability') }}" class="btn btn-light flex-fill">
+                            <i class="bi bi-calendar-plus me-1"></i>Set Availability
+                        </a>
+                        <a href="{{ url_for('doctor_appointments') }}" class="btn btn-outline-light flex-fill">
+                            <i class="bi bi-list"></i> View All
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body p-4">
+            <h5 class="mb-3 text-primary">
+                <i class="bi bi-calendar-event me-2"></i>Upcoming Appointments
+            </h5>
+            
+            {% if upcoming_appointments and upcoming_appointments|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th><i class="bi bi-calendar3 me-1"></i>Date</th>
+                            <th><i class="bi bi-clock me-1"></i>Time</th>
+                            <th><i class="bi bi-person me-1"></i>Patient</th>
+                            <th><i class="bi bi-telephone me-1"></i>Contact</th>
+                            <th><i class="bi bi-file-text me-1"></i>Reason</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appt in upcoming_appointments %}
+                        <tr>
+                            <td><strong>{{ appt.appointment_date }}</strong></td>
+                            <td><span class="badge bg-info">{{ appt.appointment_time }}</span></td>
+                            <td>{{ appt.patient_name }}</td>
+                            <td>
+                                {% if appt.patient_phone %}
+                                <a href="tel:{{ appt.patient_phone }}" class="text-decoration-none">
+                                    {{ appt.patient_phone }}
+                                </a>
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if appt.reason %}
+                                <span data-bs-toggle="tooltip" title="{{ appt.reason }}">
+                                    {{ appt.reason[:30] }}{% if appt.reason|length > 30 %}...{% endif %}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="completeAppointment({{ appt.id }})" title="Mark Complete">
+                                    <i class="bi bi-check-circle"></i> Complete
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if upcoming_appointments|length >= 5 %}
+            <div class="text-center mt-3">
+                <a href="{{ url_for('doctor_appointments') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-right-circle me-2"></i>View All Appointments
+                </a>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-5 bg-light rounded">
+                <i class="bi bi-calendar-x" style="font-size: 60px; color: #ccc;"></i>
+                <p class="text-muted mt-3 mb-3">No upcoming appointments scheduled</p>
+                <a href="{{ url_for('doctor_availability') }}" class="btn btn-primary">
+                    <i class="bi bi-calendar-plus me-2"></i>Set Your Availability
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Quick Stats Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card text-center p-4" style="background: linear-gradient(135deg, #ff9800, #f57c00); color: white;">
+                <div class="display-4 mb-2">📋</div>
+                <h4>{{ consultations|length }}</h4>
+                <p class="mb-0">Total Consultations</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <a href="/doctor/patients" class="card text-center p-4 text-decoration-none" style="background: linear-gradient(135deg, #9c27b0, #7b1fa2); color: white;">
+                <div class="display-4 mb-2">👥</div>
+                <h4><i class="bi bi-people"></i></h4>
+                <p class="mb-0">View All Patients</p>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{{ url_for('doctor_appointments') }}" class="card text-center p-4 text-decoration-none" style="background: linear-gradient(135deg, #00bcd4, #0097a7); color: white;">
+                <div class="display-4 mb-2">📅</div>
+                <h4><i class="bi bi-calendar-week"></i></h4>
+                <p class="mb-0">Appointment Calendar</p>
+            </a>
+        </div>
+    </div>
+    
+    <!-- All Pending Consultations (Expanded View) -->
+    {% if pending_count > 3 %}
+    <div id="all-consultations" class="mt-5">
+        <h4 class="mb-4">All Pending Consultations</h4>
+        {% for c in pending_consultations %}
+        <div class="card mb-4 p-4" style="border-left: 5px solid #ff9800;">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <span class="badge bg-warning text-dark mb-2">PENDING</span>
+                    <h5 class="mb-1">{{ c.patient_name }}</h5>
+                    <small class="text-muted">
+                        {{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at and not (c.created_at is string) else c.created_at }}
+                        | {{ c.severity or 'N/A' }}
+                    </small>
+                </div>
+                <a href="/doctor/reply/{{ c.id }}" class="btn btn-primary">
+                    <i class="bi bi-reply"></i> Reply
+                </a>
+            </div>
+            
+            <p><strong>Symptoms:</strong> {{ c.symptoms[:200] if c.symptoms else 'N/A' }}{% if c.symptoms and c.symptoms|length > 200 %}...{% endif %}</p>
+            
+            <div class="row">
+                {% if c.voice_record %}
+                <div class="col-md-6 mb-3">
+                    <div class="bg-light p-3 rounded">
+                        <h6><i class="bi bi-mic-fill text-danger"></i> Voice Recording</h6>
+                        <audio controls preload="metadata" class="w-100 mt-2" style="height: 40px;">
+                            <source src="/uploads/{{ c.voice_record }}" type="audio/webm">
+                            <source src="/uploads/{{ c.voice_record }}" type="audio/mpeg">
+                            <source src="/uploads/{{ c.voice_record }}" type="audio/wav">
+                        </audio>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if c.images and c.images|length > 0 %}
+                <div class="col-md-6 mb-3">
+                    <div class="bg-light p-3 rounded">
+                        <h6><i class="bi bi-images text-primary"></i> Images ({{ c.images|length }})</h6>
+                        <div class="d-flex gap-2 mt-2 flex-wrap">
+                            {% for img in c.images %}
+                            <a href="/uploads/{{ img }}" target="_blank">
+                                <img src="/uploads/{{ img }}" 
+                                     style="height: 70px; width: 70px; object-fit: cover; border-radius: 8px; border: 2px solid #ddd;">
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Complete Appointment Modal -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Complete Appointment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="completeForm" method="POST">
+                <div class="modal-body">
+                    <p>Mark this appointment as completed?</p>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" name="notes" rows="3" placeholder="Treatment given, follow-up required, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Mark Complete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function completeAppointment(id) {
+    document.getElementById('completeForm').action = `/doctor/complete-appointment/${id}`;
+    new bootstrap.Modal(document.getElementById('completeModal')).show();
+}
+
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+  return new bootstrap.Tooltip(tooltipTriggerEl)
+})
+</script>
+{% endblock %}

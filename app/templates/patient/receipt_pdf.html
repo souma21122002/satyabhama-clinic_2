@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Appointment Receipt - #APT{{ '%05d' % appointment.id }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: white; }
+        .receipt { max-width: 700px; margin: 0 auto; border: 2px solid #667eea; padding: 0; }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 25px; text-align: center; }
+        .header h2 { margin-bottom: 5px; }
+        .content { padding: 25px; }
+        .booking-id { background: #f0f4ff; padding: 15px; text-align: center; margin-bottom: 20px; border-radius: 8px; }
+        .booking-id h3 { color: #667eea; font-size: 24px; }
+        .section { margin-bottom: 20px; }
+        .section h4 { color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 5px; margin-bottom: 10px; }
+        .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #ddd; }
+        .row:last-child { border-bottom: none; }
+        .label { color: #666; }
+        .value { font-weight: bold; }
+        .instructions { background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .instructions h5 { color: #856404; margin-bottom: 10px; }
+        .instructions ul { margin-left: 20px; font-size: 14px; }
+        .footer { background: #f5f5f5; padding: 15px; text-align: center; margin-top: 20px; font-size: 14px; }
+        .badge { background: #28a745; color: white; padding: 3px 10px; border-radius: 4px; font-size: 12px; }
+        .print-btn { text-align: center; margin-top: 20px; }
+        .print-btn button { background: #667eea; color: white; border: none; padding: 15px 30px; font-size: 16px; cursor: pointer; border-radius: 8px; }
+        @media print { .print-btn { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="receipt">
+        <div class="header">
+            <h2>🏥 Satyabhama Clinic</h2>
+            <p>সত্যভামা ক্লিনিক</p>
+            <small>Appointment Receipt</small>
+        </div>
+        
+        <div class="content">
+            <div class="booking-id">
+                <small>Booking ID</small>
+                <h3>#APT{{ '%05d' % appointment.id }}</h3>
+            </div>
+            
+            <div class="section">
+                <h4>👤 Patient Details</h4>
+                <div class="row">
+                    <span class="label">Name:</span>
+                    <span class="value">{{ patient.name }}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Phone:</span>
+                    <span class="value">{{ patient.phone or 'N/A' }}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Email:</span>
+                    <span class="value">{{ patient.email }}</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h4>👨‍⚕️ Doctor Details</h4>
+                <div class="row">
+                    <span class="label">Doctor:</span>
+                    <span class="value">Dr. {{ doctor.name }}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Specialization:</span>
+                    <span class="value">Homeopathy (BHMS)</span>
+                </div>
+                <div class="row">
+                    <span class="label">Contact:</span>
+                    <span class="value">{{ doctor.phone or '+91 9932199936' }}</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h4>📅 Appointment Details</h4>
+                <div class="row">
+                    <span class="label">Date:</span>
+                    <span class="value">{{ appointment.appointment_date }}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Time:</span>
+                    <span class="value">{{ appointment.appointment_time }}</span>
+                </div>
+                <div class="row">
+                    <span class="label">Status:</span>
+                    <span class="value"><span class="badge">Confirmed</span></span>
+                </div>
+                <div class="row">
+                    <span class="label">Booked On:</span>
+                    <span class="value">{{ appointment.created_at }}</span>
+                </div>
+                {% if appointment.reason %}
+                <div class="row">
+                    <span class="label">Reason:</span>
+                    <span class="value">{{ appointment.reason }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="instructions">
+                <h5>⚠️ Important Instructions</h5>
+                <ul>
+                    <li>Please arrive 10 minutes before your scheduled time</li>
+                    <li>Bring this receipt (printed or on mobile)</li>
+                    <li>Carry your previous prescriptions if any</li>
+                    <li>For cancellation, please inform 24 hours in advance</li>
+                </ul>
+            </div>
+            
+            <div class="footer">
+                <p><strong>Clinic Address:</strong></p>
+                <p>Near Sonartori Lodge, Kuikota Market, Midnapore, West Bengal - 721101</p>
+                <p>📞 +91 9932199936 | +91 7718494401</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="print-btn">
+        <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+</body>
+</html>

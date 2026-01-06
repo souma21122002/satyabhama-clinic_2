@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Satyabhama Clinic</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .card { border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .btn-remedy { background: linear-gradient(45deg, #667eea, #764ba2); border: none; }
+        .btn-remedy:hover { transform: scale(1.05); }
+        .hero-section { background: rgba(255, 255, 255, 0.8); padding: 60px 0; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body class="d-flex align-items-center py-5">
+    <div class="container">
+        {% extends "base.html" %}
+
+        {% block title %}Satyabhama Clinic - সত্যভামা ক্লিনিক | Homeopathy{% endblock %}
+
+        {% block content %}
+        <div class="hero-section text-center">
+            <div class="container position-relative" style="z-index: 1;">
+                <img src="/uploads/clinic_logo.png" alt="Satyabhama Clinic" style="height: 150px; margin-bottom: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" onerror="this.style.display='none'">
+                <h1 class="display-4 fw-bold mb-2">Satyabhama Clinic</h1>
+                <h2 class="bengali-text mb-3" style="font-size: 1.8rem;">সত্যভামা ক্লিনিক</h2>
+                <p class="lead mb-2">Dr. Ajoy Kumar Singha Mahapatra (BHMS)</p>
+                <p class="mb-2">
+                    <i class="bi bi-telephone"></i> +91 9932199936 | +91 7718494401
+                </p>
+                <p class="mb-5">AI-Powered Remedy Finder & Expert Homeopathic Consultations</p>
+                
+                {% if not session.get('user') or (session.get('user') and session.user.role == 'patient') %}
+                <a href="#remedy-finder" class="btn btn-light btn-lg me-3 fw-bold">
+                    <i class="bi bi-search"></i> Find Remedies
+                </a>
+                <a href="/patient/consult" class="btn btn-gold btn-lg">
+                    <i class="bi bi-chat-dots"></i> Consult Doctor
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="container py-5">
+            <!-- Doctor Welcome Section -->
+            {% if session.get('user') and session.user.role == 'doctor' %}
+            <div class="card mb-5 border-success" style="border-width: 3px; background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));">
+                <div class="card-body p-5">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            <div style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #4caf50, #45a049); display: flex; align-items: center; justify-content: center; margin: 0 auto; border: 4px solid #4caf50;">
+                                <span style="font-size: 70px;">👨‍⚕️</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h2 class="mb-2 text-success">Welcome, {{ session.user.name }}</h2>
+                            <p class="text-muted mb-0 lead">BHMS | Homeopathic Physician</p>
+                            <p class="text-muted">Manage your consultations and appointments</p>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                            <a href="/doctor/dashboard" class="btn btn-success btn-lg d-block mb-2">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                            <a href="{{ url_for('doctor_appointments') }}" class="btn btn-outline-success btn-lg d-block mb-2">
+                                <i class="bi bi-calendar-check"></i> Appointments
+                            </a>
+                            <a href="{{ url_for('doctor_availability') }}" class="btn btn-outline-success btn-lg d-block">
+                                <i class="bi bi-calendar-plus"></i> Set Availability
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Doctor Quick Stats -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <a href="/doctor/dashboard" class="card p-4 text-center text-decoration-none h-100" style="background: linear-gradient(135deg, #ff9800, #f57c00); color: white;">
+                        <div class="display-4 mb-2">📋</div>
+                        <h4>Pending Consultations</h4>
+                        <p class="mb-0">Review and respond</p>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ url_for('doctor_appointments') }}" class="card p-4 text-center text-decoration-none h-100" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                        <div class="display-4 mb-2">📅</div>
+                        <h4>Upcoming Appointments</h4>
+                        <p class="mb-0">View scheduled visits</p>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="/doctor/patients" class="card p-4 text-center text-decoration-none h-100" style="background: linear-gradient(135deg, #9c27b0, #7b1fa2); color: white;">
+                        <div class="display-4 mb-2">👥</div>
+                        <h4>Patient Records</h4>
+                        <p class="mb-0">View patient history</p>
+                    </a>
+                </div>
+            </div>
+            
+            {% elif not session.get('user') %}
+            <!-- Login/Register Section for non-logged in users -->
+            <div class="row g-4 mb-5">
+                <!-- Patient Login Card -->
+                <div class="col-md-6">
+                    <div class="card p-4 h-100 border-primary" style="border-width: 2px;">
+                        <div class="text-center mb-3">
+                            <span style="font-size: 50px;">🧑‍🤝‍🧑</span>
+                        </div>
+                        <h4 class="text-center text-primary">Patient Portal</h4>
+                        <p class="text-muted text-center">Login to view your consultations & book appointments</p>
+                        <div class="d-grid gap-2">
+                            <a href="/login" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i> Patient Login
+                            </a>
+                            <a href="/register" class="btn btn-outline-primary btn-lg">
+                                <i class="bi bi-person-plus"></i> Register
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Doctor Login Card -->
+                <div class="col-md-6">
+                    <div class="card p-4 h-100 border-success" style="border-width: 2px;">
+                        <div class="text-center mb-3">
+                            <span style="font-size: 50px;">👨‍⚕️</span>
+                        </div>
+                        <h4 class="text-center text-success">Doctor Portal</h4>
+                        <p class="text-muted text-center">Access dashboard & manage patients</p>
+                        <div class="d-grid gap-2">
+                            <a href="/doctor/login" class="btn btn-success btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i> Doctor Login
+                            </a>
+                            <a href="/about" class="btn btn-outline-success btn-lg">
+                                <i class="bi bi-info-circle"></i> About Doctor
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- Patient Welcome Section -->
+            <div class="card mb-5 border-primary" style="border-width: 3px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05));">
+                <div class="card-body p-5">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            <span style="font-size: 80px;">🧑‍🤝‍🧑</span>
+                        </div>
+                        <div class="col-md-6">
+                            <h2 class="mb-2" style="color: #667eea;">Welcome, {{ session.user.name }}</h2>
+                            <p class="text-muted mb-0 lead">Patient Account</p>
+                            <p class="text-muted">Manage your health consultations and appointments</p>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                            <a href="/patient/dashboard" class="btn btn-lg px-5 py-3 w-100" 
+                               style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px; font-weight: 600; box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);">
+                                <i class="bi bi-speedometer2 me-2"></i>Go to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Show Appointment Booking only for Patients and Non-logged users -->
+            {% if not session.get('user') or (session.get('user') and session.user.role == 'patient') %}
+            <!-- Appointment Booking Section -->
+            <div class="card mb-5" style="border-radius: 25px; overflow: hidden; border: none; box-shadow: 0 20px 60px rgba(102, 126, 234, 0.2);">
+                <div class="row g-0">
+                    <div class="col-md-6" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 50px; color: white;">
+                        <div class="h-100 d-flex flex-column justify-content-center">
+                            <div class="mb-4">
+                                <span style="font-size: 80px;">📅</span>
+                            </div>
+                            <h2 class="fw-bold mb-3">Book Clinic Visit</h2>
+                            <p class="lead mb-4">Schedule an in-person consultation at our clinic</p>
+                            
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="bi bi-check-circle-fill me-3" style="font-size: 24px;"></i>
+                                    <span>Easy online booking system</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="bi bi-check-circle-fill me-3" style="font-size: 24px;"></i>
+                                    <span>Morning & Evening slots available</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="bi bi-check-circle-fill me-3" style="font-size: 24px;"></i>
+                                    <span>Only 15 patients per slot</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-check-circle-fill me-3" style="font-size: 24px;"></i>
+                                    <span>Reschedule anytime</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 p-3 rounded" style="background: rgba(255,255,255,0.15);">
+                                <p class="mb-1"><i class="bi bi-clock me-2"></i><strong>Clinic Hours:</strong></p>
+                                <p class="mb-0 ms-4">Morning: 9:00 AM - 1:00 PM</p>
+                                <p class="mb-0 ms-4">Evening: 6:00 PM - 10:00 PM</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-center justify-content-center" style="padding: 50px; background: white;">
+                        <div class="text-center">
+                            <div style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; border: 5px solid #667eea;">
+                                <span style="font-size: 70px;">👨‍⚕️</span>
+                            </div>
+                            <h4 class="text-primary mb-1">Dr. Ajoy Kumar Singha Mahapatra</h4>
+                            <p class="text-muted mb-4">BHMS | 15+ Years Experience</p>
+                            
+                            {% if session.get('user') and session.user.role == 'patient' %}
+                            <a href="{{ url_for('book_appointment') }}" class="btn btn-lg px-5 py-3" 
+                               style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px; font-weight: 600;">
+                                <i class="bi bi-calendar-plus me-2"></i>Book Appointment Now
+                            </a>
+                            <a href="{{ url_for('patient_appointments') }}" class="btn btn-outline-primary btn-lg mt-3 d-block">
+                                <i class="bi bi-calendar-check me-2"></i>View My Appointments
+                            </a>
+                            {% elif not session.get('user') %}
+                            <a href="{{ url_for('login') }}" class="btn btn-lg px-5 py-3" 
+                               style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px; font-weight: 600;">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login to Book
+                            </a>
+                            <p class="mt-3 mb-0">
+                                <a href="{{ url_for('register') }}" class="text-primary">New patient? Register here</a>
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Online Consultation Section -->
+            <div class="card mb-5" style="border-radius: 25px; overflow: hidden; border: none; box-shadow: 0 20px 60px rgba(76, 175, 80, 0.2);">
+                <div class="row g-0">
+                    <div class="col-md-6 d-flex align-items-center justify-content-center order-md-1" style="padding: 50px; background: white;">
+                        <div class="text-center">
+                            <span style="font-size: 100px;">💻</span>
+                            <h4 class="text-success mt-3 mb-1">Online Consultation</h4>
+                            <p class="text-muted mb-4">Get expert advice from home</p>
+                            
+                            {% if session.get('user') and session.user.role == 'patient' %}
+                            <a href="/patient/consult" class="btn btn-success btn-lg px-5 py-3" style="border-radius: 15px; font-weight: 600;">
+                                <i class="bi bi-chat-dots me-2"></i>Start Consultation
+                            </a>
+                            <a href="/patient/dashboard" class="btn btn-outline-success btn-lg mt-3 d-block">
+                                <i class="bi bi-list-check me-2"></i>View My Consultations
+                            </a>
+                            {% elif not session.get('user') %}
+                            <a href="{{ url_for('login') }}" class="btn btn-success btn-lg px-5 py-3" style="border-radius: 15px; font-weight: 600;">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login to Consult
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6 order-md-0" style="background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); padding: 50px; color: white;">
+                        <div class="h-100 d-flex flex-column justify-content-center">
+                            <div class="mb-4">
+                                <span style="font-size: 80px;">🩺</span>
+                            </div>
+                            <h2 class="fw-bold mb-3">Online Consultation</h2>
+                            <p class="lead mb-4">Submit your symptoms and get expert homeopathic advice</p>
+                            
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="bi bi-check-circle-fill me-3" style="font-size: 24px;"></i>
+                                    <span>Describe your symptoms in detail</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="bi bi-check-circle-fill me-3" style="font-size: 24px;"></i>
+                                    <span>Upload voice recordings & images</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="bi bi-check-circle-fill me-3" style="font-size: 24px;"></i>
+                                    <span>Get personalized remedy suggestions</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-check-circle-fill me-3" style="font-size: 24px;"></i>
+                                    <span>Doctor replies within 24 hours</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Feature Cards -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <div class="card h-100 p-4 text-center">
+                        <div class="display-1 mb-3">🔍</div>
+                        <h4>AI Remedy Finder</h4>
+                        <p class="text-muted">Instant AI-powered remedy suggestions based on your symptoms</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 p-4 text-center">
+                        <div class="display-1 mb-3">📅</div>
+                        <h4>Book Appointment</h4>
+                        <p class="text-muted">Schedule clinic visits with easy online booking</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 p-4 text-center">
+                        <div class="display-1 mb-3">🎙️</div>
+                        <h4>Voice & Images</h4>
+                        <p class="text-muted">Send voice recordings and images for better diagnosis</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Remedy Finder -->
+            <div class="card p-5" id="remedy-finder">
+                <h2 class="text-center mb-2">🌿 AI-Powered Remedy Finder</h2>
+                <p class="text-center text-muted mb-4">Describe your symptoms for instant suggestions</p>
+                
+                <form action="/find-remedy" method="POST">
+                    <div class="mb-4">
+                        <textarea name="symptoms" class="form-control" rows="5" placeholder="Describe your symptoms in detail..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-search"></i> Find Remedies
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Bottom CTA for non-logged in users -->
+            <div class="text-center mt-5 p-5 bg-white rounded shadow-sm">
+                <h3 class="mb-4">Ready to Get Started?</h3>
+                <a href="/register" class="btn btn-primary btn-lg me-3"><i class="bi bi-person-plus"></i> Register Now</a>
+                <a href="/about" class="btn btn-gold btn-lg"><i class="bi bi-person-badge"></i> Meet the Doctor</a>
+            </div>
+            {% endif %}
+        </div>
+        {% endblock %}
+    </div>
+</body>
+</html>

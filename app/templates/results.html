@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remedy Results - Homeopathy Healing Center</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .card { border-radius: 15px; }
+        .remedy-card { transition: transform 0.3s; }
+        .remedy-card:hover { transform: translateY(-5px); }
+        .match-badge { font-size: 1.2rem; }
+        .symptom-tag { background: #e9ecef; padding: 4px 10px; border-radius: 15px; font-size: 0.85rem; }
+        .ai-reason { background: #f8f9fa; border-left: 4px solid #667eea; padding: 10px; margin-top: 10px; }
+    </style>
+</head>
+<body class="py-5">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h1 class="text-white">🌿 Matching Remedies</h1>
+            <p class="text-white opacity-75">AI-Powered Analysis Results</p>
+        </div>
+        
+        <div class="card p-4 mb-4">
+            <h6 class="text-muted mb-2">Your Symptoms:</h6>
+            <p class="mb-0">{{ symptoms }}</p>
+        </div>
+        
+        <div class="row g-4">
+            {% for remedy in remedies %}
+            <div class="col-md-6">
+                <div class="card remedy-card h-100 p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h4 class="mb-0">{{ remedy.name }}</h4>
+                        <span class="badge bg-success match-badge">{{ remedy.match_score }}% Match</span>
+                    </div>
+                    
+                    <p class="text-muted">{{ remedy.description }}</p>
+                    
+                    {% if remedy.reason %}
+                    <div class="ai-reason">
+                        <strong>🤖 AI Analysis:</strong> {{ remedy.reason }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if remedy.key_symptoms %}
+                    <h6 class="mt-3">Key Symptoms:</h6>
+                    <div class="mb-3">
+                        {% for symptom in remedy.key_symptoms %}
+                        <span class="symptom-tag d-inline-block me-1 mb-1">{{ symptom }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if remedy.modalities and (remedy.modalities.worse or remedy.modalities.better) %}
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-danger"><strong>Worse:</strong> {{ remedy.modalities.worse | join(', ') }}</small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-success"><strong>Better:</strong> {{ remedy.modalities.better | join(', ') }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-3 pt-3 border-top">
+                        <strong>Suggested Potency:</strong> {{ remedy.potency }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="/" class="btn btn-light btn-lg">← New Search</a>
+            <a href="/history" class="btn btn-outline-light btn-lg ms-2">View History</a>
+        </div>
+    </div>
+</body>
+</html>

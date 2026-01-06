@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Appointments - Doctor Portal{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <h1>📅 Appointments</h1>
+        <p class="mb-0 opacity-75">Manage patient appointments</p>
+        <div class="mt-3">
+            <a href="{{ url_for('doctor_availability') }}" class="btn btn-outline-light me-2">
+                <i class="bi bi-calendar-plus"></i> Set Availability
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Stats -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card p-4 text-center" style="background: linear-gradient(135deg, #4caf50, #45a049); color: white;">
+                <h3>{{ upcoming|length }}</h3>
+                <p class="mb-0">Upcoming</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 text-center" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                <h3>{{ past|length }}</h3>
+                <p class="mb-0">Past</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 text-center" style="background: linear-gradient(135deg, #ff9800, #f57c00); color: white;">
+                <h3>{{ (upcoming|length) + (past|length) }}</h3>
+                <p class="mb-0">Total</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upcoming Appointments -->
+    <div class="card shadow mb-5">
+        <div class="card-header text-white" style="background: linear-gradient(135deg, #4caf50, #45a049);">
+            <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Upcoming Appointments</h5>
+        </div>
+        <div class="card-body">
+            {% if upcoming %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Patient</th>
+                            <th>Contact</th>
+                            <th>Reason</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appt in upcoming %}
+                        <tr>
+                            <td><span class="badge bg-primary">#{{ appt.id }}</span></td>
+                            <td><strong>{{ appt.appointment_date }}</strong></td>
+                            <td><span class="badge bg-info">{{ appt.appointment_time }}</span></td>
+                            <td>{{ appt.patient_name }}</td>
+                            <td>{{ appt.patient_phone or 'N/A' }}</td>
+                            <td>{{ appt.reason[:50] if appt.reason else 'N/A' }}{% if appt.reason and appt.reason|length > 50 %}...{% endif %}</td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="completeAppointment({{ appt.id }})" title="Mark Complete">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-calendar-x" style="font-size: 60px; color: #ccc;"></i>
+                <p class="text-muted mt-3 mb-0">No upcoming appointments.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Past Appointments -->
+    <div class="card shadow">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Past Appointments</h5>
+        </div>
+        <div class="card-body">
+            {% if past %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Patient</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appt in past %}
+                        <tr>
+                            <td><span class="badge bg-secondary">#{{ appt.id }}</span></td>
+                            <td>{{ appt.appointment_date }}</td>
+                            <td>{{ appt.appointment_time }}</td>
+                            <td>{{ appt.patient_name }}</td>
+                            <td>
+                                {% if appt.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                                {% elif appt.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ appt.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-3 mb-0">No past appointments.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Complete Modal -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Complete Appointment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="completeForm" method="POST">
+                <div class="modal-body">
+                    <p>Mark this appointment as completed?</p>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Mark Complete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function completeAppointment(id) {
+    document.getElementById('completeForm').action = `/doctor/complete-appointment/${id}`;
+    new bootstrap.Modal(document.getElementById('completeModal')).show();
+}
+</script>
+{% endblock %}

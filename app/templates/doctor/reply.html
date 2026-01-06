@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Reply to Patient - Homeopathy Healing Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .history-scroll { 
+        max-height: 300px; 
+        overflow-y: auto; 
+    }
+    .timeline-item { 
+        border-left: 3px solid #4caf50; 
+        padding-left: 12px; 
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px dashed #eee;
+    }
+    .timeline-item:last-child {
+        border-bottom: none;
+    }
+    .timeline-item.pending { 
+        border-left-color: #ff9800; 
+    }
+    .section-card {
+        margin-bottom: 1rem;
+    }
+    .info-table td {
+        padding: 5px 10px;
+        vertical-align: top;
+    }
+    .info-table td:first-child {
+        font-weight: 600;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <h1>📝 Reply to Consultation #{{ consultation.id }}</h1>
+        <p class="mb-0 opacity-75">Patient: {{ consultation.patient_name }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row">
+        <!-- Left Column: Patient Info & History - Made wider -->
+        <div class="col-xl-6 col-lg-5 mb-4">
+            <div class="row">
+                <!-- Patient Info Card -->
+                <div class="col-md-6 mb-3">
+                    {% if patient_info %}
+                    <div class="card p-3 h-100 section-card">
+                        <h6 class="border-bottom pb-2 mb-2"><i class="bi bi-person-circle text-primary"></i> Patient Info</h6>
+                        <table class="table table-sm table-borderless info-table mb-0">
+                            <tr><td>Name:</td><td>{{ patient_info.name }}</td></tr>
+                            <tr><td>Age:</td><td>{{ patient_info.age }} years</td></tr>
+                            <tr><td>Gender:</td><td>{{ patient_info.gender|capitalize }}</td></tr>
+                            <tr><td>Phone:</td><td>{{ patient_info.phone }}</td></tr>
+                            <tr><td>Email:</td><td class="small">{{ patient_info.email }}</td></tr>
+                        </table>
+                        <a href="/doctor/patient/{{ patient_info.email }}" class="btn btn-sm btn-primary mt-2">
+                            <i class="bi bi-clock-history"></i> Full History
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Current Consultation Summary -->
+                <div class="col-md-6 mb-3">
+                    <div class="card p-3 h-100 section-card">
+                        <h6 class="border-bottom pb-2 mb-2"><i class="bi bi-clipboard-pulse text-success"></i> Consultation Info</h6>
+                        <table class="table table-sm table-borderless info-table mb-0">
+                            <tr><td>Date:</td><td>{{ consultation.created_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+                            <tr><td>Duration:</td><td>{{ consultation.duration }}</td></tr>
+                            <tr>
+                                <td>Severity:</td>
+                                <td>
+                                    <span class="badge {% if consultation.severity == 'Critical' %}bg-danger{% elif consultation.severity == 'Severe' %}bg-warning{% else %}bg-info{% endif %}">
+                                        {{ consultation.severity }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr><td>Status:</td><td><span class="badge bg-warning">{{ consultation.status }}</span></td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Symptoms -->
+            <div class="card p-3 section-card">
+                <h6 class="border-bottom pb-2 mb-2"><i class="bi bi-bandaid text-danger"></i> Symptoms</h6>
+                <div class="bg-light p-3 rounded" style="max-height: 150px; overflow-y: auto;">
+                    {{ consultation.symptoms }}
+                </div>
+            </div>
+            
+            <!-- Medical History & Medications -->
+            <div class="row">
+                {% if consultation.medical_history %}
+                <div class="col-md-6 mb-3">
+                    <div class="card p-3 h-100 section-card">
+                        <h6 class="border-bottom pb-2 mb-2"><i class="bi bi-file-medical text-info"></i> Medical History</h6>
+                        <div class="small" style="max-height: 100px; overflow-y: auto;">
+                            {{ consultation.medical_history }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if consultation.current_medications %}
+                <div class="col-md-6 mb-3">
+                    <div class="card p-3 h-100 section-card">
+                        <h6 class="border-bottom pb-2 mb-2"><i class="bi bi-capsule text-warning"></i> Current Medications</h6>
+                        <div class="small" style="max-height: 100px; overflow-y: auto;">
+                            {{ consultation.current_medications }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Attachments -->
+            <div class="card p-3 section-card">
+                <h6 class="border-bottom pb-2 mb-2"><i class="bi bi-paperclip text-secondary"></i> Attachments</h6>
+                
+                <div class="row">
+                    <!-- Voice Recording -->
+                    <div class="col-md-{% if consultation.images and consultation.images|length > 0 %}6{% else %}12{% endif %}">
+                        {% if consultation.voice_record %}
+                        <div class="mb-2">
+                            <small class="text-muted"><i class="bi bi-mic-fill text-danger"></i> Voice Recording:</small>
+                            <audio controls preload="auto" class="w-100 mt-1" style="height: 35px;">
+                                <source src="/uploads/{{ consultation.voice_record }}" type="audio/webm">
+                                <source src="/uploads/{{ consultation.voice_record }}" type="audio/mpeg">
+                            </audio>
+                            <div class="mt-1">
+                                <a href="/uploads/{{ consultation.voice_record }}" download class="btn btn-sm btn-outline-primary py-0">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <form action="/doctor/delete-media/{{ consultation.id }}/audio" method="POST" class="d-inline"
+                                      onsubmit="return confirm('Delete audio?');">
+                                    <input type="hidden" name="filename" value="{{ consultation.voice_record }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                        {% else %}
+                        <p class="text-muted small mb-0"><i class="bi bi-mic-mute"></i> No voice recording</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Images -->
+                    <div class="col-md-{% if consultation.voice_record %}6{% else %}12{% endif %}">
+                        {% if consultation.images and consultation.images|length > 0 %}
+                        <small class="text-muted"><i class="bi bi-images text-primary"></i> Images ({{ consultation.images|length }}):</small>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            {% for img in consultation.images %}
+                            <div class="position-relative">
+                                <a href="/uploads/{{ img }}" target="_blank">
+                                    <img src="/uploads/{{ img }}" class="rounded" style="height: 50px; width: 50px; object-fit: cover;">
+                                </a>
+                                <form action="/doctor/delete-media/{{ consultation.id }}/image" method="POST" class="position-absolute" style="top: -5px; right: -5px;"
+                                      onsubmit="return confirm('Delete?');">
+                                    <input type="hidden" name="filename" value="{{ img }}">
+                                    <button type="submit" class="btn btn-danger btn-sm rounded-circle p-0" style="width: 18px; height: 18px; font-size: 10px;">×</button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted small mb-0"><i class="bi bi-image"></i> No images</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Previous Consultations History -->
+            <div class="card p-3 section-card">
+                <h6 class="border-bottom pb-2 mb-2">
+                    <i class="bi bi-clock-history text-primary"></i> Previous Consultations 
+                    {% set prev_count = patient_history|length - 1 if patient_history|length > 1 else 0 %}
+                    <span class="badge bg-secondary">{{ prev_count }}</span>
+                </h6>
+                
+                <div class="history-scroll">
+                    {% set has_prev = false %}
+                    {% for h in patient_history %}
+                        {% if h.id != consultation.id %}
+                            {% set has_prev = true %}
+                            <div class="timeline-item {% if h.status == 'pending' %}pending{% endif %}">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="fw-bold">
+                                        {% if h.created_at %}
+                                            {% if h.created_at is string %}
+                                                {{ h.created_at[:10] }}
+                                            {% else %}
+                                                {{ h.created_at.strftime('%Y-%m-%d') }}
+                                            {% endif %}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </small>
+                                    <span class="badge {% if h.status == 'replied' %}bg-success{% else %}bg-warning{% endif %}" style="font-size: 10px;">
+                                        {{ h.status }}
+                                    </span>
+                                </div>
+                                <p class="mb-1 small text-muted">{{ h.symptoms[:100] }}...</p>
+                                
+                                {% if h.doctor_reply %}
+                                <div class="bg-success bg-opacity-10 p-2 rounded small">
+                                    <div><strong>Rx:</strong> {{ h.doctor_reply.medicines_given or h.doctor_reply.remedies or 'N/A' }}</div>
+                                    <div><strong>Potency:</strong> {{ h.doctor_reply.potency or 'N/A' }}</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if not has_prev or patient_history|length <= 1 %}
+                    <p class="text-muted small mb-0 text-center py-3">No previous consultations for this patient</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Reply Form -->
+        <div class="col-xl-6 col-lg-7">
+            <div class="card p-4">
+                <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-prescription2 text-success"></i> Your Prescription</h5>
+                
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Diagnosis *</label>
+                        <textarea name="diagnosis" class="form-control" rows="3" required
+                            placeholder="Your diagnosis based on the symptoms..."></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Recommended Remedies *</label>
+                            <input type="text" name="remedies" class="form-control" required
+                                placeholder="e.g., Arnica Montana, Belladonna">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Potency & Dosage *</label>
+                            <input type="text" name="potency" class="form-control" required
+                                placeholder="e.g., 30C - 3 times daily">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold"><i class="bi bi-capsule"></i> Medicines Given *</label>
+                        <textarea name="medicines_given" class="form-control" rows="2" required
+                            placeholder="List all medicines with quantities (for your records)..."></textarea>
+                        <small class="text-muted">Saved in patient history for future reference</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Instructions for Patient *</label>
+                        <textarea name="instructions" class="form-control" rows="3" required
+                            placeholder="Detailed instructions..."></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Follow-up</label>
+                            <input type="text" name="follow_up" class="form-control"
+                                placeholder="e.g., After 1 week">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold"><i class="bi bi-journal-medical"></i> Doctor Notes</label>
+                            <input type="text" name="doctor_notes" class="form-control"
+                                placeholder="Private notes (patient won't see)">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-3 mt-3">
+                        <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                            <i class="bi bi-send"></i> Send Reply
+                        </button>
+                        <a href="/doctor/dashboard" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

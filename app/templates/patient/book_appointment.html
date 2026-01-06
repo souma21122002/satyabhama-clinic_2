@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Book Appointment - Satyabhama Clinic{% endblock %}
+
+{% block extra_css %}
+<style>
+    .booking-hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 0; margin-bottom: 30px; }
+    .booking-card { border-radius: 20px; box-shadow: 0 15px 50px rgba(0,0,0,0.1); border: none; overflow: hidden; }
+    .booking-card .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border: none; }
+    .doctor-card { border: 2px solid #e0e0e0; border-radius: 15px; padding: 20px; cursor: pointer; transition: all 0.3s; margin-bottom: 15px; }
+    .doctor-card:hover, .doctor-card.selected { border-color: #667eea; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05)); }
+    .doctor-card.selected { border-width: 3px; }
+    .time-slot { display: inline-block; padding: 12px 20px; margin: 5px; border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.3s; min-width: 120px; text-align: center; }
+    .time-slot:hover { border-color: #667eea; background: rgba(102, 126, 234, 0.1); }
+    .time-slot.selected { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: #667eea; }
+    .time-slot.filling { border-color: #ff9800; background: rgba(255, 152, 0, 0.1); }
+    .time-slot .remaining { font-size: 11px; opacity: 0.8; }
+    .session-label { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 20px; border-radius: 20px; display: inline-block; margin-bottom: 15px; font-weight: 600; }
+    .date-picker-wrapper { background: #f8f9fa; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+    .step-indicator { display: flex; justify-content: center; margin-bottom: 30px; }
+    .step { width: 40px; height: 40px; border-radius: 50%; background: #e0e0e0; color: #666; display: flex; align-items: center; justify-content: center; font-weight: bold; margin: 0 10px; }
+    .step.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+    .step.completed { background: #4caf50; color: white; }
+    .no-slots-message { background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 87, 34, 0.05)); border: 2px solid #ff9800; border-radius: 15px; padding: 30px; text-align: center; }
+    .off-day-message { background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05)); border: 2px solid #dc3545; border-radius: 15px; padding: 30px; text-align: center; }
+    .btn-book { background: linear-gradient(135deg, #4caf50, #45a049); border: none; padding: 15px 40px; font-size: 18px; font-weight: 600; border-radius: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="booking-hero">
+    <div class="container text-center">
+        <h1 class="display-5 fw-bold mb-2">📅 Book Your Appointment</h1>
+        <p class="lead mb-0">Schedule a consultation with Dr. Ajoy Kumar Singha Mahapatra</p>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="step-indicator">
+                <div class="step active" id="step1">1</div>
+                <div class="step" id="step2">2</div>
+                <div class="step" id="step3">3</div>
+            </div>
+            
+            <div class="card booking-card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Appointment Booking</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" id="bookingForm">
+                        <!-- Step 1: Select Doctor -->
+                        <div class="booking-step" id="stepDoctor">
+                            <h5 class="mb-4"><span class="badge bg-primary me-2">Step 1</span> Select Doctor</h5>
+                            {% for doctor in doctors %}
+                            <div class="doctor-card" onclick="selectDoctor({{ doctor.id }}, '{{ doctor.name }}')">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; font-size: 30px;">👨‍⚕️</div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="mb-1 text-primary">Dr. {{ doctor.name }}</h5>
+                                        <p class="mb-1 text-muted"><i class="bi bi-award me-1"></i>BHMS - Homeopathic Physician</p>
+                                        <p class="mb-0"><i class="bi bi-telephone me-1"></i>{{ doctor.phone or '+91 9932199936' }}</p>
+                                    </div>
+                                    <div class="text-end">
+                                        <i class="bi bi-check-circle-fill text-success check-icon" style="font-size: 24px; display: none;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            <input type="hidden" name="doctor_id" id="doctor_id" required>
+                        </div>
+                        
+                        <!-- Step 2: Select Date & Time -->
+                        <div class="booking-step" id="stepDateTime" style="display: none;">
+                            <h5 class="mb-4"><span class="badge bg-primary me-2">Step 2</span> Select Date & Time</h5>
+                            
+                            <div class="date-picker-wrapper">
+                                <label class="form-label fw-bold"><i class="bi bi-calendar3 me-2"></i>Select Date</label>
+                                <input type="date" class="form-control form-control-lg" id="appointment_date" name="appointment_date" required>
+                            </div>
+                            
+                            <div id="slotsContainer" style="display: none;">
+                                <div id="slotsLoading" class="text-center py-4" style="display: none;">
+                                    <div class="spinner-border text-primary"></div>
+                                    <p class="mt-2 text-muted">Checking availability...</p>
+                                </div>
+                                <div id="slotsContent"></div>
+                                <input type="hidden" name="appointment_time" id="appointment_time" required>
+                            </div>
+                            
+                            <button type="button" class="btn btn-outline-secondary mt-3" onclick="goToStep(1)">
+                                <i class="bi bi-arrow-left me-2"></i>Back
+                            </button>
+                        </div>
+                        
+                        <!-- Step 3: Confirm -->
+                        <div class="booking-step" id="stepConfirm" style="display: none;">
+                            <h5 class="mb-4"><span class="badge bg-primary me-2">Step 3</span> Confirm Booking</h5>
+                            
+                            <div class="card bg-light mb-4">
+                                <div class="card-body">
+                                    <h6 class="text-primary mb-3"><i class="bi bi-info-circle me-2"></i>Booking Summary</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <p class="mb-1 text-muted">Doctor</p>
+                                            <p class="fw-bold" id="summaryDoctor">-</p>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <p class="mb-1 text-muted">Date</p>
+                                            <p class="fw-bold" id="summaryDate">-</p>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <p class="mb-1 text-muted">Time</p>
+                                            <p class="fw-bold" id="summaryTime">-</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-bold"><i class="bi bi-chat-text me-2"></i>Reason for Visit (Optional)</label>
+                                <textarea class="form-control" name="reason" rows="3" placeholder="Describe your symptoms..."></textarea>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-secondary btn-lg" onclick="goToStep(2)">
+                                    <i class="bi bi-arrow-left me-2"></i>Back
+                                </button>
+                                <button type="submit" class="btn btn-book btn-lg text-white">
+                                    <i class="bi bi-check-circle me-2"></i>Confirm Booking
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4" style="border-radius: 15px;">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5 class="text-primary mb-2"><i class="bi bi-clock me-2"></i>Clinic Hours</h5>
+                            <p class="mb-1"><strong>Morning:</strong> 9:00 AM - 1:00 PM</p>
+                            <p class="mb-0"><strong>Evening:</strong> 6:00 PM - 10:00 PM</p>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <p class="mb-1"><i class="bi bi-telephone"></i> +91 9932199936</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedDoctor = null;
+let selectedDoctorName = '';
+let selectedDate = null;
+let selectedTime = null;
+let selectedTimeDisplay = '';
+
+const dateInput = document.getElementById('appointment_date');
+const today = new Date().toISOString().split('T')[0];
+dateInput.min = today;
+
+function selectDoctor(id, name) {
+    selectedDoctor = id;
+    selectedDoctorName = name;
+    document.getElementById('doctor_id').value = id;
+    
+    document.querySelectorAll('.doctor-card').forEach(card => {
+        card.classList.remove('selected');
+        const icon = card.querySelector('.check-icon');
+        if (icon) icon.style.display = 'none';
+    });
+    event.currentTarget.classList.add('selected');
+    const checkIcon = event.currentTarget.querySelector('.check-icon');
+    if (checkIcon) checkIcon.style.display = 'block';
+    
+    setTimeout(() => goToStep(2), 300);
+}
+
+function goToStep(step) {
+    document.querySelectorAll('.booking-step').forEach(s => s.style.display = 'none');
+    document.querySelectorAll('.step').forEach((s, i) => {
+        s.classList.remove('active', 'completed');
+        if (i + 1 < step) s.classList.add('completed');
+        if (i + 1 === step) s.classList.add('active');
+    });
+    
+    if (step === 1) document.getElementById('stepDoctor').style.display = 'block';
+    else if (step === 2) document.getElementById('stepDateTime').style.display = 'block';
+    else if (step === 3) {
+        document.getElementById('stepConfirm').style.display = 'block';
+        updateSummary();
+    }
+}
+
+dateInput.addEventListener('change', function() {
+    selectedDate = this.value;
+    if (selectedDoctor && selectedDate) fetchSlots();
+});
+
+function fetchSlots() {
+    const container = document.getElementById('slotsContainer');
+    const loading = document.getElementById('slotsLoading');
+    const content = document.getElementById('slotsContent');
+    
+    container.style.display = 'block';
+    loading.style.display = 'block';
+    content.innerHTML = '';
+    
+    fetch(`/api/available-slots/${selectedDoctor}/${selectedDate}`)
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            
+            if (!data.available) {
+                // Doctor not available on this date
+                content.innerHTML = `
+                    <div class="off-day-message">
+                        <i class="bi bi-calendar-x" style="font-size: 60px; color: #dc3545;"></i>
+                        <h5 class="mt-3 text-danger">Doctor Not Available</h5>
+                        <p class="text-muted mb-3">${data.message || 'The doctor has not set availability for this date.'}</p>
+                        <p class="mb-0"><strong>Please select another date.</strong></p>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (data.slots && data.slots.length > 0) {
+                let html = '';
+                
+                const morningSlots = data.slots.filter(s => parseInt(s.time.split(':')[0]) < 14);
+                const eveningSlots = data.slots.filter(s => parseInt(s.time.split(':')[0]) >= 18);
+                
+                if (morningSlots.length > 0) {
+                    html += '<div class="mb-4">';
+                    html += '<span class="session-label"><i class="bi bi-brightness-high me-2"></i>Morning (9 AM - 1 PM)</span>';
+                    html += '<div class="d-flex flex-wrap">';
+                    morningSlots.forEach(slot => {
+                        html += `<div class="time-slot ${slot.status === 'filling' ? 'filling' : ''}" onclick="selectTime('${slot.time}', '${slot.display}', this)">
+                            <div class="fw-bold">${slot.display}</div>
+                            <div class="remaining">${slot.remaining} slots left</div>
+                        </div>`;
+                    });
+                    html += '</div></div>';
+                }
+                
+                if (eveningSlots.length > 0) {
+                    html += '<div class="mb-4">';
+                    html += '<span class="session-label"><i class="bi bi-moon-stars me-2"></i>Evening (6 PM - 10 PM)</span>';
+                    html += '<div class="d-flex flex-wrap">';
+                    eveningSlots.forEach(slot => {
+                        html += `<div class="time-slot ${slot.status === 'filling' ? 'filling' : ''}" onclick="selectTime('${slot.time}', '${slot.display}', this)">
+                            <div class="fw-bold">${slot.display}</div>
+                            <div class="remaining">${slot.remaining} slots left</div>
+                        </div>`;
+                    });
+                    html += '</div></div>';
+                }
+                
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = `
+                    <div class="no-slots-message">
+                        <i class="bi bi-calendar-x" style="font-size: 50px; color: #ff9800;"></i>
+                        <h5 class="mt-3 text-warning">All Slots Fully Booked</h5>
+                        <p class="text-muted mb-3">${data.message || 'All available slots are booked for this date.'}</p>
+                        <p class="mb-0">Please select another date.</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(err => {
+            console.error('Fetch error:', err);
+            loading.style.display = 'none';
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Error loading slots. Please try again.
+                </div>
+            `;
+        });
+}
+
+function selectTime(time, display, element) {
+    selectedTime = time;
+    selectedTimeDisplay = display;
+    document.getElementById('appointment_time').value = time;
+    
+    document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+    element.classList.add('selected');
+    
+    setTimeout(() => goToStep(3), 300);
+}
+
+function updateSummary() {
+    document.getElementById('summaryDoctor').textContent = 'Dr. ' + selectedDoctorName;
+    document.getElementById('summaryDate').textContent = formatDate(selectedDate);
+    document.getElementById('summaryTime').textContent = selectedTimeDisplay;
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+</script>
+{% endblock %}

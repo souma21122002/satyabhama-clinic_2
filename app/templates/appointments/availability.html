@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Availability{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-clock me-2"></i>Manage Your Availability</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-4">
+                            <label class="form-label">Appointment Slot Duration</label>
+                            <select class="form-select w-auto" name="slot_duration">
+                                <option value="15">15 minutes</option>
+                                <option value="30" selected>30 minutes</option>
+                                <option value="45">45 minutes</option>
+                                <option value="60">60 minutes</option>
+                            </select>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Day</th>
+                                        <th>Available</th>
+                                        <th>Start Time</th>
+                                        <th>End Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                    {% for i in range(7) %}
+                                    {% set day_avail = availabilities|selectattr('day_of_week', 'equalto', i)|first %}
+                                    <tr>
+                                        <td>{{ days[i] }}</td>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input day-checkbox" type="checkbox" 
+                                                       id="day_{{ i }}" data-day="{{ i }}"
+                                                       {{ 'checked' if day_avail else '' }}>
+                                                <input type="hidden" name="days[]" value="{{ i }}" 
+                                                       {{ '' if day_avail else 'disabled' }} class="day-hidden-{{ i }}">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <input type="time" class="form-control time-input-{{ i }}" 
+                                                   name="start_times[]" 
+                                                   value="{{ day_avail.start_time.strftime('%H:%M') if day_avail else '09:00' }}"
+                                                   {{ '' if day_avail else 'disabled' }}>
+                                        </td>
+                                        <td>
+                                            <input type="time" class="form-control time-input-{{ i }}" 
+                                                   name="end_times[]" 
+                                                   value="{{ day_avail.end_time.strftime('%H:%M') if day_avail else '17:00' }}"
+                                                   {{ '' if day_avail else 'disabled' }}>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('appointments.doctor_calendar') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Calendar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Availability
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.day-checkbox').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            const day = this.dataset.day;
+            const timeInputs = document.querySelectorAll(`.time-input-${day}`);
+            const hiddenInput = document.querySelector(`.day-hidden-${day}`);
+            
+            timeInputs.forEach(input => input.disabled = !this.checked);
+            hiddenInput.disabled = !this.checked;
+        });
+    });
+});
+</script>
+{% endblock %}

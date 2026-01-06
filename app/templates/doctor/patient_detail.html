@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Patient: {{ patient.name }} - Homeopathy Healing Center{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <h1><i class="bi bi-person-circle"></i> {{ patient.name }}</h1>
+        <p class="mb-0 opacity-75">Complete Patient History</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row">
+        <!-- Patient Info - Left Sidebar -->
+        <div class="col-lg-3 col-md-4 mb-4">
+            <!-- Patient Details Card -->
+            <div class="card p-4 mb-3">
+                <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-person-vcard text-primary"></i> Patient Details</h5>
+                <table class="table table-sm table-borderless">
+                    <tr><td><strong>Name:</strong></td></tr>
+                    <tr><td class="ps-3">{{ patient.name }}</td></tr>
+                    <tr><td><strong>Email:</strong></td></tr>
+                    <tr><td class="ps-3 small text-break">{{ patient.email }}</td></tr>
+                    <tr><td><strong>Phone:</strong></td></tr>
+                    <tr><td class="ps-3">{{ patient.phone or 'N/A' }}</td></tr>
+                    <tr><td><strong>Age:</strong></td></tr>
+                    <tr><td class="ps-3">{{ patient.age or 'N/A' }} years</td></tr>
+                    <tr><td><strong>Gender:</strong></td></tr>
+                    <tr><td class="ps-3">{{ (patient.gender|capitalize) if patient.gender else 'N/A' }}</td></tr>
+                    <tr><td><strong>Registered:</strong></td></tr>
+                    <tr><td class="ps-3">
+                        {% if patient.created_at %}
+                            {% if patient.created_at is string %}
+                                {{ patient.created_at[:10] }}
+                            {% else %}
+                                {{ patient.created_at.strftime('%Y-%m-%d') }}
+                            {% endif %}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td></tr>
+                </table>
+                
+                <hr>
+                
+                <div class="mb-2 d-flex justify-content-between">
+                    <span>Total Consultations</span>
+                    <span class="badge bg-primary">{{ history|length }}</span>
+                </div>
+                <div class="mb-2 d-flex justify-content-between">
+                    <span>Replied</span>
+                    <span class="badge bg-success">{{ history|selectattr('status', 'equalto', 'replied')|list|length }}</span>
+                </div>
+                <div class="mb-3 d-flex justify-content-between">
+                    <span>Pending</span>
+                    <span class="badge bg-warning">{{ history|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+                </div>
+                
+                <a href="/doctor/dashboard" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                    <i class="bi bi-arrow-left"></i> Dashboard
+                </a>
+                <a href="/doctor/patients" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-people"></i> All Patients
+                </a>
+            </div>
+            
+            <!-- Doctor Notes for Patient -->
+            <div class="card p-4">
+                <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-journal-text text-warning"></i> Doctor Notes</h5>
+                
+                {% if patient.doctor_notes %}
+                <div class="bg-warning bg-opacity-10 p-3 rounded mb-3 border-start border-warning border-3">
+                    <small class="text-muted d-block mb-1">
+                        <i class="bi bi-clock"></i> Last saved: {{ patient.notes_updated or 'N/A' }}
+                    </small>
+                    <p class="mb-0" style="white-space: pre-wrap;">{{ patient.doctor_notes }}</p>
+                </div>
+                {% endif %}
+                
+                <form action="/doctor/patient/{{ patient.email }}/notes" method="POST">
+                    <label class="form-label small text-muted">
+                        {% if patient.doctor_notes %}Edit notes:{% else %}Add notes:{% endif %}
+                    </label>
+                    <textarea name="patient_notes" class="form-control mb-2" rows="3" 
+                        placeholder="Write important notes about this patient...">{{ patient.doctor_notes or '' }}</textarea>
+                    <button type="submit" class="btn btn-warning btn-sm w-100">
+                        <i class="bi bi-save"></i> Save Notes
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Consultation History - Main Content -->
+        <div class="col-lg-9 col-md-8">
+            <h4 class="mb-4"><i class="bi bi-clock-history text-primary"></i> Consultation History</h4>
+            
+            {% if history %}
+                {% for h in history %}
+                <div class="card mb-4 p-4" style="border-left: 5px solid {% if h.status == 'replied' %}#4caf50{% else %}#ff9800{% endif %};">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="badge {% if h.status == 'replied' %}bg-success{% else %}bg-warning{% endif %} mb-2">
+                                {{ h.status|upper }}
+                            </span>
+                            <h5 class="mb-0">Consultation #{{ h.id }}</h5>
+                            <small class="text-muted">
+                                {% if h.created_at %}
+                                    {% if h.created_at is string %}
+                                        {{ h.created_at }}
+                                    {% else %}
+                                        {{ h.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                                | Severity: {{ h.severity or 'N/A' }}
+                            </small>
+                        </div>
+                        {% if h.status == 'pending' %}
+                        <a href="/doctor/reply/{{ h.id }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-reply"></i> Reply
+                        </a>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Symptoms:</strong></p>
+                            <p class="bg-light p-2 rounded">{{ h.symptoms or 'N/A' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Duration:</strong> {{ h.duration or 'N/A' }}</p>
+                            {% if h.medical_history %}
+                            <p><strong>Medical History:</strong> {{ h.medical_history }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if h.doctor_reply %}
+                    <hr>
+                    <div class="bg-success bg-opacity-10 p-3 rounded">
+                        <h6 class="text-success mb-3"><i class="bi bi-check-circle"></i> Your Reply</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-2"><strong>Diagnosis:</strong><br>{{ h.doctor_reply.diagnosis or 'N/A' }}</p>
+                                <p class="mb-2"><strong>Remedies:</strong><br>{{ h.doctor_reply.remedies or 'N/A' }}</p>
+                                <p class="mb-2"><strong>Potency:</strong><br>{{ h.doctor_reply.potency or 'N/A' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-2"><strong>Medicines Given:</strong><br>{{ h.doctor_reply.medicines_given or 'N/A' }}</p>
+                                <p class="mb-2"><strong>Instructions:</strong><br>{{ h.doctor_reply.instructions or 'N/A' }}</p>
+                                {% if h.doctor_reply.doctor_notes %}
+                                <p class="mb-2 text-muted"><strong>Notes:</strong><br>{{ h.doctor_reply.doctor_notes }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            Replied on: 
+                            {% if h.doctor_reply.replied_at %}
+                                {% if h.doctor_reply.replied_at is string %}
+                                    {{ h.doctor_reply.replied_at }}
+                                {% else %}
+                                    {{ h.doctor_reply.replied_at.strftime('%Y-%m-%d %H:%M') if h.doctor_reply.replied_at else 'N/A' }}
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="card p-5 text-center">
+                <p class="text-muted mb-0">No consultations yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

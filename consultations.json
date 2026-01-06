@@ -1,0 +1,75 @@
+[
+  {
+    "patient_email": "ajoysinghamahapatra1234@gmail.com",
+    "patient_name": "Ajoy Kumar Singha Mahapatra",
+    "symptoms": "hb,hjsbx,hjbxjhe,bx",
+    "duration": "Chronic/Years",
+    "severity": "Moderate",
+    "medical_history": "nbedx,hbd",
+    "current_medications": "jbdjb",
+    "voice_record": null,
+    "images": [],
+    "status": "replied",
+    "doctor_reply": {
+      "diagnosis": "hvhvhbhj",
+      "remedies": "jbjb",
+      "potency": "bjb ",
+      "instructions": "hjvhb",
+      "follow_up": "hb",
+      "medicines_given": "hjv,hb",
+      "doctor_notes": "hvv",
+      "replied_at": "2026-01-05T23:47:29.502446"
+    },
+    "created_at": "2026-01-05T23:46:05.180354",
+    "id": 3
+  },
+  {
+    "patient_email": "soumadipsinghamahapatra@gmail.com",
+    "patient_name": "Soumadip Singha Mahapatra",
+    "symptoms": "vhgv",
+    "duration": "Less than 1 day",
+    "severity": "Moderate",
+    "medical_history": "v",
+    "current_medications": "i",
+    "voice_record": "audio_20260105214020_voice_record.webm",
+    "images": [
+      "img_20260105214020_a_person_standing_on_a_broken_object_in_.png",
+      "img_20260105214020_cross.jpg",
+      "img_20260105214020_Father_Son_Wallpaper.png"
+    ],
+    "status": "replied",
+    "doctor_reply": {
+      "diagnosis": "bkluuhlkhbk",
+      "remedies": ",hjbjhb",
+      "potency": "kvhv",
+      "instructions": "giulgh",
+      "follow_up": "",
+      "medicines_given": "bkhgkhjhgv",
+      "doctor_notes": "",
+      "replied_at": "2026-01-05T22:07:08.165343"
+    },
+    "created_at": "2026-01-05T21:40:20.743107",
+    "id": 2
+  },
+  {
+    "patient_email": "soumadipsinghamahapatra@gmail.com",
+    "patient_name": "Soumadip Singha Mahapatra",
+    "symptoms": "kgfkg",
+    "duration": "2-4 weeks",
+    "severity": "Mild",
+    "medical_history": "jhbhjbjhb",
+    "current_medications": "hvhgu",
+    "voice_record": "20260105211807_voice_record.webm",
+    "status": "replied",
+    "doctor_reply": {
+      "diagnosis": "vhjgbjgk",
+      "remedies": "jvfkfes",
+      "potency": "jhgjg",
+      "instructions": "jhjg",
+      "follow_up": "hfh",
+      "replied_at": "2026-01-05T21:41:55.499316"
+    },
+    "created_at": "2026-01-05T21:18:07.225471",
+    "id": 1
+  }
+]

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}About Dr. Ajoy Kumar Singha Mahapatra - Satyabhama Clinic{% endblock %}
+
+{% block content %}
+<div class="medical-header text-center">
+    <div class="container">
+        <h1>👨‍⚕️ Meet Our Doctor</h1>
+        <p class="mb-0 opacity-75 bengali-text">সত্যভামা ক্লিনিক</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card p-5">
+                <div class="row">
+                    <!-- Doctor Photo -->
+                    <div class="col-md-4 text-center mb-4 mb-md-0">
+                        <div class="mb-3">
+                            <img src="/uploads/doctor_photo.png" alt="Dr. Ajoy Kumar Singha Mahapatra" 
+                                 class="rounded-circle shadow" 
+                                 style="width: 200px; height: 200px; object-fit: cover; border: 5px solid #667eea;">
+                        </div>
+                        <h4 class="mb-1">Dr. Ajoy Kumar Singha Mahapatra</h4>
+                        <p class="text-muted mb-2">BHMS</p>
+                        <span class="badge bg-primary mb-3">Homeopathic Physician</span>
+                        
+                        <!-- Contact Numbers -->
+                        <div class="bg-light p-3 rounded">
+                            <h6 class="mb-2"><i class="bi bi-telephone text-primary"></i> Contact</h6>
+                            <p class="mb-1">
+                                <a href="tel:+919932199936" class="text-decoration-none">
+                                    <i class="bi bi-phone"></i> +91 9932199936
+                                </a>
+                            </p>
+                            <p class="mb-0">
+                                <a href="tel:+917718494401" class="text-decoration-none">
+                                    <i class="bi bi-phone"></i> +91 7718494401
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Doctor Details -->
+                    <div class="col-md-8">
+                        <div class="row mb-4">
+                            <div class="col-sm-6">
+                                <div class="card bg-light p-3 mb-3 h-100">
+                                    <h6><i class="bi bi-award text-primary"></i> Qualification</h6>
+                                    <p class="mb-0"><strong>BHMS</strong></p>
+                                    <small class="text-muted">Bachelor of Homeopathic Medicine & Surgery</small>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="card bg-light p-3 mb-3 h-100">
+                                    <h6><i class="bi bi-building text-primary"></i> Education</h6>
+                                    <p class="mb-0"><strong>The Homoeopathic Medical College and Hospital</strong></p>
+                                    <small class="text-muted">Mihijam, Jharkhand</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-light p-4 mb-4">
+                            <h5><i class="bi bi-heart-pulse text-danger"></i> About</h5>
+                            <p class="mb-0">
+                                Welcome to <strong>Satyabhama Clinic (সত্যভামা ক্লিনিক)</strong>. I am Dr. Ajoy Kumar Singha Mahapatra, 
+                                a dedicated homeopathic physician providing natural, holistic healthcare through classical homeopathy.
+                                <br><br>
+                                With my education from The Homoeopathic Medical College and Hospital of Mihijam, I bring deep understanding 
+                                of homeopathic principles for treating acute and chronic conditions.
+                                <br><br>
+                                <em>"The highest ideal of cure is the rapid, gentle and permanent restoration of health."</em> - Samuel Hahnemann
+                            </p>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-sm-4">
+                                <div class="card p-3 text-center h-100">
+                                    <h5 class="text-primary">🌿</h5>
+                                    <h6>Specializations</h6>
+                                    <small class="text-muted">Chronic Diseases, Skin, Allergies, Digestive</small>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="card p-3 text-center h-100">
+                                    <h5 class="text-primary">⏰</h5>
+                                    <h6>Hours</h6>
+                                    <small class="text-muted">Mon-Sat: 10 AM - 8 PM</small>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="card p-3 text-center h-100">
+                                    <h5 class="text-primary">📍</h5>
+                                    <h6>Location</h6>
+                                    <small class="text-muted">Kuikota Market, Midnapore</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-5">
+                
+                <div class="text-center">
+                    <h4 class="mb-4">Ready to Start Your Healing Journey?</h4>
+                    {% if session.get('user') and session.user.role == 'patient' %}
+                    <a href="{{ url_for('book_appointment') }}" class="btn btn-primary btn-lg me-2">
+                        <i class="bi bi-calendar-plus"></i> Book Appointment
+                    </a>
+                    <a href="/patient/consult" class="btn btn-success btn-lg me-2">
+                        <i class="bi bi-chat-dots"></i> Online Consultation
+                    </a>
+                    {% elif not session.get('user') %}
+                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-2">
+                        <i class="bi bi-box-arrow-in-right"></i> Login to Book
+                    </a>
+                    <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg me-2">
+                        <i class="bi bi-person-plus"></i> Register
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('home') }}" class="btn btn-primary btn-lg me-2">
+                        <i class="bi bi-house"></i> Back to Home
+                    </a>
+                    {% endif %}
+                    <a href="tel:+919932199936" class="btn btn-success btn-lg me-2">
+                        <i class="bi bi-telephone"></i> Call Now
+                    </a>
+                    <a href="/location" class="btn btn-outline-primary btn-lg">
+                        <i class="bi bi-geo-alt"></i> Visit Clinic
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

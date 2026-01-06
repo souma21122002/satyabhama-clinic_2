@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Gallery - Satyabhama Clinic{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gallery-img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+        border-radius: 15px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        cursor: pointer;
+    }
+    .gallery-img:hover {
+        transform: scale(1.03);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="medical-header text-center">
+    <div class="container">
+        <h1><i class="bi bi-images"></i> Gallery</h1>
+        <p class="mb-0 opacity-75">Satyabhama Clinic | সত্যভামা ক্লিনিক</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row g-4">
+        <!-- Clinic Logo -->
+        <div class="col-md-4 col-sm-6">
+            <img src="/uploads/clinic_logo.png" alt="Clinic Logo" class="gallery-img shadow"
+                 data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showImage(this.src)">
+        </div>
+        
+        <!-- Doctor Photo -->
+        <div class="col-md-4 col-sm-6">
+            <img src="/uploads/doctor_photo.png" alt="Doctor Photo" class="gallery-img shadow"
+                 data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showImage(this.src)">
+        </div>
+        
+        <!-- Gallery images from gallery subfolder -->
+        <div class="col-md-4 col-sm-6">
+            <img src="/uploads/gallery/gallery_1.png" alt="Gallery 1" class="gallery-img shadow"
+                 data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showImage(this.src)"
+                 onerror="this.parentElement.style.display='none'">
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <img src="/uploads/gallery/gallery_2.png" alt="Gallery 2" class="gallery-img shadow"
+                 data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showImage(this.src)"
+                 onerror="this.parentElement.style.display='none'">
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <img src="/uploads/gallery/gallery_3.png" alt="Gallery 3" class="gallery-img shadow"
+                 data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showImage(this.src)"
+                 onerror="this.parentElement.style.display='none'">
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <img src="/uploads/gallery/gallery_4.png" alt="Gallery 4" class="gallery-img shadow"
+                 data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showImage(this.src)"
+                 onerror="this.parentElement.style.display='none'">
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <img src="/uploads/gallery/gallery_5.png" alt="Gallery 5" class="gallery-img shadow"
+                 data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showImage(this.src)"
+                 onerror="this.parentElement.style.display='none'">
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <img src="/uploads/gallery/gallery_6.png" alt="Gallery 6" class="gallery-img shadow"
+                 data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showImage(this.src)"
+                 onerror="this.parentElement.style.display='none'">
+        </div>
+    </div>
+    
+    <div class="text-center mt-5">
+        <a href="/" class="btn btn-primary">← Back to Home</a>
+        <a href="/location" class="btn btn-outline-primary ms-2">View Location</a>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-transparent border-0">
+            <div class="modal-body text-center p-0">
+                <img src="" id="modalImage" class="rounded shadow" style="max-width: 100%; max-height: 80vh;">
+                <button type="button" class="btn btn-light mt-3" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showImage(src) {
+    document.getElementById('modalImage').src = src;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Location - Satyabhama Clinic{% endblock %}
+
+{% block content %}
+<div class="medical-header text-center">
+    <div class="container">
+        <h1><i class="bi bi-geo-alt"></i> Our Location</h1>
+        <p class="mb-0 opacity-75">Satyabhama Clinic | সত্যভামা ক্লিনিক</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <!-- Location Details -->
+        <div class="col-lg-5 mb-4">
+            <div class="card p-4 h-100">
+                <h4 class="border-bottom pb-3 mb-4"><i class="bi bi-building text-primary"></i> Clinic Address</h4>
+                
+                <div class="mb-4">
+                    <h5 class="text-success">🌿 Satyabhama Clinic</h5>
+                    <p class="bengali-text mb-3" style="font-size: 1.2rem;">সত্যভামা ক্লিনিক</p>
+                </div>
+                
+                <div class="bg-light p-4 rounded mb-4">
+                    <p class="mb-2"><i class="bi bi-geo-alt text-danger"></i> <strong>Address:</strong></p>
+                    <p class="ms-4 mb-0">
+                        Near Sonartori Lodge,<br>
+                        Kuikota Market,<br>
+                        Midnapore,<br>
+                        Paschim Medinipur,<br>
+                        West Bengal - <strong>721101</strong>
+                    </p>
+                </div>
+                
+                <!-- Contact Numbers -->
+                <div class="bg-success bg-opacity-10 p-4 rounded mb-4">
+                    <p class="mb-2"><i class="bi bi-telephone text-success"></i> <strong>Contact Numbers:</strong></p>
+                    <p class="ms-4 mb-1">
+                        <a href="tel:+919932199936" class="text-decoration-none fs-5">
+                            <i class="bi bi-phone"></i> +91 9932199936
+                        </a>
+                    </p>
+                    <p class="ms-4 mb-0">
+                        <a href="tel:+917718494401" class="text-decoration-none fs-5">
+                            <i class="bi bi-phone"></i> +91 7718494401
+                        </a>
+                    </p>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="mb-2"><i class="bi bi-person-badge text-primary"></i> <strong>Doctor:</strong></p>
+                    <p class="ms-4">Dr. Ajoy Kumar Singha Mahapatra (BHMS)</p>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="mb-2"><i class="bi bi-clock text-success"></i> <strong>Consultation Hours:</strong></p>
+                    <table class="table table-sm ms-4">
+                        <tr><td>Monday - Saturday</td><td>10:00 AM - 8:00 PM</td></tr>
+                        <tr><td>Sunday</td><td>By Appointment Only</td></tr>
+                    </table>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="tel:+919932199936" class="btn btn-success btn-lg">
+                        <i class="bi bi-telephone"></i> Call Now
+                    </a>
+                    <a href="#" class="btn btn-primary btn-lg" id="directionsBtn">
+                        <i class="bi bi-signpost-2"></i> Get Directions
+                    </a>
+                    <a href="/register" class="btn btn-outline-success">
+                        <i class="bi bi-calendar-check"></i> Book Appointment
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map -->
+        <div class="col-lg-7 mb-4">
+            <div class="card p-3 h-100">
+                <h5 class="mb-3"><i class="bi bi-map"></i> Find Us on Map</h5>
+                
+                <!-- Map Placeholder - Replace with actual embed -->
+                <div id="mapContainer" class="rounded" style="height: 400px; background: #e9ecef;">
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3690.5!2d87.32!3d22.42!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjLCsDI1JzEyLjAiTiA4N8KwMTknMTIuMCJF!5e0!3m2!1sen!2sin!4v1600000000000!5m2!1sen!2sin" 
+                        width="100%" 
+                        height="400" 
+                        style="border:0; border-radius: 10px;" 
+                        allowfullscreen="" 
+                        loading="lazy"
+                        onerror="this.style.display='none'">
+                    </iframe>
+                    
+                    <!-- Fallback if map doesn't load -->
+                    <div class="text-center py-5" id="mapFallback" style="display: none;">
+                        <i class="bi bi-map" style="font-size: 50px; color: #6c757d;"></i>
+                        <p class="text-muted mt-3">Map will be displayed here</p>
+                        <small class="text-muted">Near Sonartori Lodge, Kuikota Market, Midnapore</small>
+                    </div>
+                </div>
+                
+                <div class="mt-3 p-3 bg-light rounded">
+                    <h6><i class="bi bi-info-circle"></i> Landmarks:</h6>
+                    <ul class="mb-0">
+                        <li>Near Sonartori Lodge</li>
+                        <li>Kuikota Market Area</li>
+                        <li>Midnapore Town</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- How to Reach -->
+    <div class="card p-4 mt-4">
+        <h4 class="border-bottom pb-3 mb-4"><i class="bi bi-signpost-split"></i> How to Reach</h4>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="text-center p-3 bg-light rounded h-100">
+                    <i class="bi bi-train-front text-primary" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2">By Train</h6>
+                    <p class="small text-muted mb-0">Midnapore Railway Station<br>Then auto/rickshaw to Kuikota Market</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="text-center p-3 bg-light rounded h-100">
+                    <i class="bi bi-bus-front text-success" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2">By Bus</h6>
+                    <p class="small text-muted mb-0">Midnapore Bus Stand<br>Local bus/auto to Kuikota</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="text-center p-3 bg-light rounded h-100">
+                    <i class="bi bi-car-front text-danger" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2">By Car</h6>
+                    <p class="small text-muted mb-0">NH-60 to Midnapore<br>Ask for Kuikota Market</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center mt-5">
+        <a href="/" class="btn btn-primary">← Back to Home</a>
+        <a href="/about" class="btn btn-outline-primary ms-2">About Doctor</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// You can update this with actual Google Maps link later
+document.getElementById('directionsBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    // Replace with actual Google Maps directions link
+    window.open('https://www.google.com/maps/search/Kuikota+Market+Midnapore+West+Bengal+721101', '_blank');
+});
+</script>
+{% endblock %}

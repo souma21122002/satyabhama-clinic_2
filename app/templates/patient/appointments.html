@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}My Appointments - Satyabhama Clinic{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <h1>📅 My Appointments</h1>
+        <p class="mb-0 opacity-75">View and manage your appointments</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Your Scheduled Appointments</h3>
+        <a href="{{ url_for('book_appointment') }}" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-circle me-2"></i>Book New Appointment
+        </a>
+    </div>
+    
+    <!-- Upcoming Appointments -->
+    <div class="card shadow mb-4" style="border-radius: 15px; border: none;">
+        <div class="card-header text-white" style="background: linear-gradient(135deg, #4caf50, #45a049); border-radius: 15px 15px 0 0;">
+            <h5 class="mb-0"><i class="bi bi-clock me-2"></i>Upcoming Appointments ({{ upcoming|length }})</h5>
+        </div>
+        <div class="card-body">
+            {% if upcoming %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Doctor</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appt in upcoming %}
+                        <tr>
+                            <td><span class="badge bg-primary">#APT{{ '%05d' % appt.id }}</span></td>
+                            <td><strong>{{ appt.appointment_date }}</strong></td>
+                            <td><span class="badge bg-info">{{ appt.appointment_time }}</span></td>
+                            <td>Dr. {{ appt.doctor_name }}</td>
+                            <td>
+                                <a href="{{ url_for('appointment_receipt', appointment_id=appt.id) }}" 
+                                   class="btn btn-sm btn-success me-1" title="View Receipt">
+                                    <i class="bi bi-receipt"></i>
+                                </a>
+                                <a href="{{ url_for('reschedule_appointment_route', appointment_id=appt.id) }}" 
+                                   class="btn btn-sm btn-outline-primary me-1" title="Reschedule">
+                                    <i class="bi bi-calendar"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger" onclick="cancelAppointment({{ appt.id }})" title="Cancel">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-calendar-x" style="font-size: 60px; color: #ccc;"></i>
+                <p class="text-muted mt-3 mb-4">No upcoming appointments</p>
+                <a href="{{ url_for('book_appointment') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Book Your First Appointment
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Past Appointments -->
+    <div class="card shadow" style="border-radius: 15px; border: none;">
+        <div class="card-header bg-secondary text-white" style="border-radius: 15px 15px 0 0;">
+            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Past Appointments</h5>
+        </div>
+        <div class="card-body">
+            {% if past %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr><th>Booking ID</th><th>Date</th><th>Time</th><th>Doctor</th><th>Status</th><th>Receipt</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for appt in past %}
+                        <tr>
+                            <td><span class="badge bg-secondary">#APT{{ '%05d' % appt.id }}</span></td>
+                            <td>{{ appt.appointment_date }}</td>
+                            <td>{{ appt.appointment_time }}</td>
+                            <td>Dr. {{ appt.doctor_name }}</td>
+                            <td>
+                                {% if appt.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                                {% elif appt.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ appt.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('appointment_receipt', appointment_id=appt.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-receipt"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-3 mb-0">No past appointments.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 15px;">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Cancel Appointment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="cancelForm" method="POST">
+                <div class="modal-body">
+                    <p>Are you sure you want to cancel this appointment?</p>
+                    <div class="mb-3">
+                        <label class="form-label">Reason for cancellation (optional)</label>
+                        <textarea class="form-control" name="cancellation_reason" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Appointment</button>
+                    <button type="submit" class="btn btn-danger">Yes, Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function cancelAppointment(id) {
+    document.getElementById('cancelForm').action = `/patient/cancel-appointment/${id}`;
+    new bootstrap.Modal(document.getElementById('cancelModal')).show();
+}
+</script>
+{% endblock %}

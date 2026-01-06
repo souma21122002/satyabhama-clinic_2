@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Patients - Homeopathy Healing Center{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <h1>👥 Registered Patients</h1>
+        <p class="mb-0 opacity-75">View and manage patient records</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card p-4">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Age/Gender</th>
+                    <th>Consultations</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients %}
+                <tr>
+                    <td><strong>{{ patient.name }}</strong></td>
+                    <td>{{ patient.email }}</td>
+                    <td>{{ patient.phone }}</td>
+                    <td>{{ patient.age }} / {{ patient.gender|capitalize }}</td>
+                    <td><span class="badge bg-primary">{{ patient.consultation_count }}</span></td>
+                    <td>
+                        <a href="/doctor/patient/{{ patient.email }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> View History
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">No patients registered yet</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="text-center mt-4">
+        <a href="/doctor/dashboard" class="btn btn-outline-primary">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

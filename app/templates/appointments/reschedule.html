@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Reschedule Appointment{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-warning">
+                    <h4 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Reschedule Appointment</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Current Appointment:</strong><br>
+                        Date: {{ appointment.appointment_date.strftime('%B %d, %Y') }}<br>
+                        Time: {{ appointment.appointment_time.strftime('%I:%M %p') }}
+                    </div>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="appointment_date" class="form-label">New Date</label>
+                            <input type="date" class="form-control" id="appointment_date" 
+                                   name="appointment_date" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="appointment_time" class="form-label">New Time Slot</label>
+                            <select class="form-select" id="appointment_time" name="appointment_time" required disabled>
+                                <option value="">-- Select date first --</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('appointments.my_appointments') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Reschedule</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('appointment_date');
+    const timeSelect = document.getElementById('appointment_time');
+    const doctorId = {{ appointment.doctor_id }};
+    
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+    
+    dateInput.addEventListener('change', function() {
+        if (this.value) {
+            timeSelect.innerHTML = '<option value="">Loading...</option>';
+            timeSelect.disabled = true;
+            
+            fetch(`/appointments/available-slots/${doctorId}/${this.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    timeSelect.innerHTML = '';
+                    if (data.slots && data.slots.length > 0) {
+                        timeSelect.innerHTML = '<option value="">-- Select a time slot --</option>';
+                        data.slots.forEach(slot => {
+                            const option = document.createElement('option');
+                            option.value = slot;
+                            option.textContent = formatTime(slot);
+                            timeSelect.appendChild(option);
+                        });
+                        timeSelect.disabled = false;
+                    } else {
+                        timeSelect.innerHTML = '<option value="">No slots available</option>';
+                    }
+                });
+        }
+    });
+    
+    function formatTime(timeStr) {
+        const [hours, minutes] = timeStr.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    }
+});
+</script>
+{% endblock %}

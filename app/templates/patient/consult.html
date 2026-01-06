@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Consult Doctor - Homeopathy Healing Center{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <h1>👨‍⚕️ Consult with Our Doctor</h1>
+        <p class="mb-0 opacity-75">Describe your symptoms in detail for accurate diagnosis</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card p-5">
+                <form method="POST" enctype="multipart/form-data">
+                    <h4 class="mb-4"><i class="bi bi-clipboard2-pulse"></i> Symptom Details</h4>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Describe Your Symptoms in Detail *</label>
+                        <textarea name="symptoms" class="form-control" rows="5" required
+                            placeholder="Please describe:
+- Main complaints and symptoms
+- Where exactly do you feel the problem?
+- Type of sensation (burning, aching, throbbing, etc.)
+- When did it start?
+- What makes it better or worse?"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Duration of Symptoms *</label>
+                            <select name="duration" class="form-select" required>
+                                <option value="">Select Duration</option>
+                                <option value="Less than 1 day">Less than 1 day</option>
+                                <option value="1-3 days">1-3 days</option>
+                                <option value="1 week">About 1 week</option>
+                                <option value="2-4 weeks">2-4 weeks</option>
+                                <option value="1-3 months">1-3 months</option>
+                                <option value="More than 3 months">More than 3 months</option>
+                                <option value="Chronic/Years">Chronic (Years)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Severity *</label>
+                            <select name="severity" class="form-select" required>
+                                <option value="">Select Severity</option>
+                                <option value="Mild">Mild - Manageable</option>
+                                <option value="Moderate">Moderate - Uncomfortable</option>
+                                <option value="Severe">Severe - Very Painful</option>
+                                <option value="Critical">Critical - Needs Urgent Care</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Medical History</label>
+                        <textarea name="medical_history" class="form-control" rows="3"
+                            placeholder="Any past illnesses, surgeries, allergies, or chronic conditions..."></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Current Medications</label>
+                        <textarea name="current_medications" class="form-control" rows="2"
+                            placeholder="List any medicines you are currently taking..."></textarea>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Image Upload Section -->
+                    <h4 class="mb-4"><i class="bi bi-image"></i> Upload Images (Optional)</h4>
+                    <p class="text-muted">Upload images of affected areas, reports, or prescriptions</p>
+                    
+                    <div class="card bg-light p-4 mb-4">
+                        <div class="mb-3">
+                            <input type="file" name="images" id="imageInput" class="form-control" 
+                                accept="image/*" multiple>
+                            <small class="text-muted">You can select multiple images (PNG, JPG, GIF)</small>
+                        </div>
+                        <div id="imagePreview" class="row g-2"></div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Voice Recording Section -->
+                    <h4 class="mb-4"><i class="bi bi-mic"></i> Voice Recording (Optional)</h4>
+                    <p class="text-muted">Record a voice message describing your symptoms</p>
+                    
+                    <div class="card bg-light p-4 mb-4">
+                        <div class="text-center mb-3">
+                            <button type="button" id="recordBtn" class="btn btn-danger btn-lg rounded-circle" style="width: 80px; height: 80px;">
+                                <i class="bi bi-mic-fill fs-3"></i>
+                            </button>
+                            <p id="recordStatus" class="mt-2 mb-0">Click to start recording</p>
+                            <p id="recordTimer" class="text-muted d-none">00:00</p>
+                        </div>
+                        
+                        <audio id="audioPlayback" controls class="w-100 d-none"></audio>
+                        <input type="file" name="voice_record" id="voiceInput" class="d-none" accept="audio/*">
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-muted">Or upload an audio file:</small><br>
+                            <label class="btn btn-outline-secondary btn-sm mt-2">
+                                <i class="bi bi-upload"></i> Upload Audio
+                                <input type="file" name="voice_record" id="audioUpload" class="d-none" accept="audio/*">
+                            </label>
+                            <span id="uploadStatus" class="ms-2 text-muted"></span>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-send"></i> Submit Consultation
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Image Preview
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    const preview = document.getElementById('imagePreview');
+    preview.innerHTML = '';
+    
+    Array.from(e.target.files).forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const col = document.createElement('div');
+            col.className = 'col-4 col-md-3';
+            col.innerHTML = `<img src="${e.target.result}" class="img-thumbnail" style="height:100px; object-fit:cover; width:100%;">`;
+            preview.appendChild(col);
+        }
+        reader.readAsDataURL(file);
+    });
+});
+
+// Audio Upload
+document.getElementById('audioUpload').addEventListener('change', function(e) {
+    if (e.target.files[0]) {
+        document.getElementById('uploadStatus').textContent = e.target.files[0].name;
+        document.getElementById('voiceInput').files = e.target.files;
+    }
+});
+
+// Voice Recording
+let mediaRecorder;
+let audioChunks = [];
+let timerInterval;
+let seconds = 0;
+
+const recordBtn = document.getElementById('recordBtn');
+const recordStatus = document.getElementById('recordStatus');
+const recordTimer = document.getElementById('recordTimer');
+const audioPlayback = document.getElementById('audioPlayback');
+const voiceInput = document.getElementById('voiceInput');
+
+function updateTimer() {
+    seconds++;
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    recordTimer.textContent = `${mins}:${secs}`;
+}
+
+recordBtn.addEventListener('click', async () => {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            audioChunks = [];
+            seconds = 0;
+            
+            mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+            
+            mediaRecorder.onstop = () => {
+                clearInterval(timerInterval);
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayback.src = audioUrl;
+                audioPlayback.classList.remove('d-none');
+                
+                const file = new File([audioBlob], 'voice_record.webm', { type: 'audio/webm' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                voiceInput.files = dataTransfer.files;
+            };
+            
+            mediaRecorder.start();
+            timerInterval = setInterval(updateTimer, 1000);
+            recordBtn.classList.replace('btn-danger', 'btn-dark');
+            recordBtn.innerHTML = '<i class="bi bi-stop-fill fs-3"></i>';
+            recordStatus.textContent = '🔴 Recording... Click to stop';
+            recordTimer.classList.remove('d-none');
+        } catch (err) {
+            alert('Microphone access denied. Please allow microphone access.');
+        }
+    } else {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        recordBtn.classList.replace('btn-dark', 'btn-danger');
+        recordBtn.innerHTML = '<i class="bi bi-mic-fill fs-3"></i>';
+        recordStatus.textContent = '✅ Recording saved! Click to re-record';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+[
+  {
+    "symptoms": "i have pain in my sthomac",
+    "suggested_remedies": "['Arsenicum Album', 'Ignatia Amara', 'Lycopodium']",
+    "created_at": "2026-01-05T23:36:42.651070",
+    "notes": null
+  },
+  {
+    "symptoms": "i have pain in my sthomac",
+    "suggested_remedies": "['Arsenicum Album', 'Ignatia Amara', 'Lycopodium']",
+    "created_at": "2026-01-05T23:36:17.310907",
+    "notes": null
+  },
+  {
+    "symptoms": "cough whenever i am trying to sleep or lying on bed. i think lachesis will be there\r\n",
+    "suggested_remedies": "['Phosphorus', 'Pulsatilla', 'Bryonia Alba']",
+    "created_at": "2026-01-05T21:03:29.423996",
+    "notes": null
+  },
+  {
+    "symptoms": "cough whenever i am trying to sleep or lying on bed",
+    "suggested_remedies": "['Phosphorus', 'Pulsatilla', 'Bryonia Alba']",
+    "created_at": "2026-01-05T21:00:20.811915",
+    "notes": null
+  }
+]

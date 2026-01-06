@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: satyabhama-clinic
+    env: python
+    pythonVersion: 3.12.0ion: 3.12.0
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: gunicorn app.main:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: satyabhama-db
+          property: connectionString
+
+databases:
+  - name: satyabhama-db
+    databaseName: homeopathy
+    user: homeopathy_user
+    region: oregon
