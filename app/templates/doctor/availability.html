@@ -192,43 +192,43 @@ slot_22: {{ avail.slot_22 }} ({{ avail.slot_22|int }})
                                     <div>
                                         {% set has_slots = false %}
                                         
-                                        {% if avail.slot_09|int == 1 %}
+                                        {% if avail.slot_09|int == 1 or avail.slot_09 %}
                                             <span class="badge bg-primary">9 AM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_10|int == 1 %}
+                                        {% if avail.slot_10|int == 1 or avail.slot_10 %}
                                             <span class="badge bg-primary">10 AM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_11|int == 1 %}
+                                        {% if avail.slot_11|int == 1 or avail.slot_11 %}
                                             <span class="badge bg-primary">11 AM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_12|int == 1 %}
+                                        {% if avail.slot_12|int == 1 or avail.slot_12 %}
                                             <span class="badge bg-primary">12 PM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_13|int == 1 %}
+                                        {% if avail.slot_13|int == 1 or avail.slot_13 %}
                                             <span class="badge bg-primary">1 PM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_18|int == 1 %}
+                                        {% if avail.slot_18|int == 1 or avail.slot_18 %}
                                             <span class="badge bg-info">6 PM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_19|int == 1 %}
+                                        {% if avail.slot_19|int == 1 or avail.slot_19 %}
                                             <span class="badge bg-info">7 PM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_20|int == 1 %}
+                                        {% if avail.slot_20|int == 1 or avail.slot_20 %}
                                             <span class="badge bg-info">8 PM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_21|int == 1 %}
+                                        {% if avail.slot_21|int == 1 or avail.slot_21 %}
                                             <span class="badge bg-info">9 PM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
-                                        {% if avail.slot_22|int == 1 %}
+                                        {% if avail.slot_22|int == 1 or avail.slot_22 %}
                                             <span class="badge bg-info">10 PM</span>
                                             {% set has_slots = true %}
                                         {% endif %}
