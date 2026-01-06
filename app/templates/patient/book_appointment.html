@@ -53,6 +53,11 @@
                         <!-- Step 1: Select Doctor -->
                         <div class="booking-step" id="stepDoctor">
                             <h5 class="mb-4"><span class="badge bg-primary me-2">Step 1</span> Select Doctor</h5>
+                            <!-- Debug Info -->
+                            <div class="alert alert-info mb-3" style="display: {% if doctors|length == 0 %}block{% else %}none{% endif %};">
+                                <small><strong>Debug:</strong> doctors array = {{ doctors|tojson }}</small>
+                            </div>
+                            {% if doctors and doctors|length > 0 %}
                             {% for doctor in doctors %}
                             <div class="doctor-card" onclick="selectDoctor({{ doctor.id }}, '{{ doctor.name }}')">
                                 <div class="d-flex align-items-center">
@@ -70,6 +75,13 @@
                                 </div>
                             </div>
                             {% endfor %}
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>No doctors available</strong><br>
+                                <small>Debug: doctors = {{ doctors|tojson }}</small>
+                            </div>
+                            {% endif %}
                             <input type="hidden" name="doctor_id" id="doctor_id" required>
                         </div>
                         
@@ -168,6 +180,7 @@ const today = new Date().toISOString().split('T')[0];
 dateInput.min = today;
 
 function selectDoctor(id, name) {
+    console.log('selectDoctor called with:', id, name);
     selectedDoctor = id;
     selectedDoctorName = name;
     document.getElementById('doctor_id').value = id;
@@ -181,6 +194,7 @@ function selectDoctor(id, name) {
     const checkIcon = event.currentTarget.querySelector('.check-icon');
     if (checkIcon) checkIcon.style.display = 'block';
     
+    console.log('Doctor selected, moving to step 2');
     setTimeout(() => goToStep(2), 300);
 }
 
@@ -210,13 +224,30 @@ function fetchSlots() {
     const loading = document.getElementById('slotsLoading');
     const content = document.getElementById('slotsContent');
     
+    console.log('fetchSlots called with doctor:', selectedDoctor, 'date:', selectedDate);
+    
+    if (!selectedDoctor || !selectedDate) {
+        console.error('Missing required data:', {selectedDoctor, selectedDate});
+        return;
+    }
+    
     container.style.display = 'block';
     loading.style.display = 'block';
     content.innerHTML = '';
     
-    fetch(`/api/available-slots/${selectedDoctor}/${selectedDate}`)
-        .then(response => response.json())
+    const url = `/api/available-slots/${selectedDoctor}/${selectedDate}`;
+    console.log('Fetching from URL:', url);
+    
+    fetch(url)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Received slots data:', data);
             loading.style.display = 'none';
             
             if (!data.available) {
@@ -282,7 +313,8 @@ function fetchSlots() {
             content.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="bi bi-exclamation-triangle me-2"></i>
-                    Error loading slots. Please try again.
+                    <strong>Error loading slots:</strong> ${err.message}
+                    <br><small>Check browser console for more details.</small>
                 </div>
             `;
         });

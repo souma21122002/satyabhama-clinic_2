@@ -462,6 +462,9 @@ def book_appointment():
         return redirect(url_for("login"))
     
     doctors = get_all_doctors()
+    print(f"📋 DEBUG: Retrieved {len(doctors)} doctors for booking page")
+    for doc in doctors:
+        print(f"  - Doctor: {doc.get('name', 'N/A')} (ID: {doc.get('id', 'N/A')})")
     
     if request.method == "POST":
         doctor_id = request.form.get("doctor_id")
@@ -670,8 +673,9 @@ def get_available_slots(doctor_id, date_str):
     available_slots = []
     
     for slot_time, col_name in slot_mapping.items():
-        # Check if slot is enabled by doctor
-        if not avail.get(col_name, 0):
+        # Check if slot is enabled by doctor - convert to int to handle both int and boolean values
+        slot_value = int(avail.get(col_name, 0)) if avail.get(col_name, 0) else 0
+        if not slot_value:
             continue
         
         # Skip past slots for today
