@@ -2,7 +2,7 @@ import os
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
+from datetime import datetime, date
 
 def get_db_connection():
     """Get PostgreSQL connection for production"""
@@ -11,7 +11,7 @@ def get_db_connection():
         if not database_url:
             raise Exception("DATABASE_URL not set")
         
-        # Render uses postgresql:// but psycopg2 needs postgres://
+        # Render uses postgres:// but psycopg2 needs postgresql://
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql://", 1)
         
@@ -30,29 +30,31 @@ def init_db():
     try:
         cur = conn.cursor()
         
+        # Create users table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                email VARCHAR(100) UNIQUE NOT NULL,
-                password VARCHAR(100) NOT NULL,
-                phone VARCHAR(20),
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(50),
                 age INTEGER,
                 gender VARCHAR(20),
-                role VARCHAR(20) NOT NULL DEFAULT 'patient',
+                role VARCHAR(20) DEFAULT 'patient',
                 doctor_notes TEXT,
                 notes_updated TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
+        # Create consultations table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS consultations (
                 id SERIAL PRIMARY KEY,
-                patient_email VARCHAR(100) NOT NULL,
-                patient_name VARCHAR(100) NOT NULL,
+                patient_email VARCHAR(255) NOT NULL,
+                patient_name VARCHAR(255) NOT NULL,
                 symptoms TEXT NOT NULL,
-                duration VARCHAR(50),
+                duration VARCHAR(100),
                 severity VARCHAR(50),
                 medical_history TEXT,
                 current_medications TEXT,
@@ -61,41 +63,21 @@ def init_db():
                 status VARCHAR(20) DEFAULT 'pending',
                 doctor_reply JSONB,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (patient_email) REFERENCES users(email) ON DELETE CASCADE
+                FOREIGN KEY (patient_email) REFERENCES users(email)
             )
         """)
         
+        # Create case history table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS case_history (
                 id SERIAL PRIMARY KEY,
                 symptoms TEXT NOT NULL,
-                suggested_remedies VARCHAR(500),
+                suggested_remedies TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
-        # Drop old availability table and create new date-wise one
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS doctor_availability (
-                id SERIAL PRIMARY KEY,
-                doctor_id INTEGER NOT NULL,
-                availability_date DATE NOT NULL,
-                slot_09 BOOLEAN DEFAULT FALSE,
-                slot_10 BOOLEAN DEFAULT FALSE,
-                slot_11 BOOLEAN DEFAULT FALSE,
-                slot_12 BOOLEAN DEFAULT FALSE,
-                slot_13 BOOLEAN DEFAULT FALSE,
-                slot_18 BOOLEAN DEFAULT FALSE,
-                slot_19 BOOLEAN DEFAULT FALSE,
-                slot_20 BOOLEAN DEFAULT FALSE,
-                slot_21 BOOLEAN DEFAULT FALSE,
-                slot_22 BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (doctor_id) REFERENCES users(id) ON DELETE CASCADE,
-                UNIQUE(doctor_id, availability_date)
-            )
-        """)
-        
+        # Create appointments table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS appointments (
                 id SERIAL PRIMARY KEY,
@@ -107,13 +89,34 @@ def init_db():
                 status VARCHAR(20) DEFAULT 'scheduled',
                 reason TEXT,
                 notes TEXT,
-                reminder_sent BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 cancelled_at TIMESTAMP,
                 cancellation_reason TEXT,
-                FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
-                FOREIGN KEY (doctor_id) REFERENCES users(id) ON DELETE CASCADE
+                FOREIGN KEY (patient_id) REFERENCES users(id),
+                FOREIGN KEY (doctor_id) REFERENCES users(id)
+            )
+        """)
+        
+        # Create doctor availability table - DATE WISE
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS doctor_availability (
+                id SERIAL PRIMARY KEY,
+                doctor_id INTEGER NOT NULL,
+                availability_date DATE NOT NULL,
+                slot_09 INTEGER DEFAULT 0,
+                slot_10 INTEGER DEFAULT 0,
+                slot_11 INTEGER DEFAULT 0,
+                slot_12 INTEGER DEFAULT 0,
+                slot_13 INTEGER DEFAULT 0,
+                slot_18 INTEGER DEFAULT 0,
+                slot_19 INTEGER DEFAULT 0,
+                slot_20 INTEGER DEFAULT 0,
+                slot_21 INTEGER DEFAULT 0,
+                slot_22 INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (doctor_id) REFERENCES users(id),
+                UNIQUE(doctor_id, availability_date)
             )
         """)
         
@@ -132,25 +135,24 @@ def save_user(user_data):
         return False
     
     try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO users (name, email, password, phone, age, gender, role, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (email) DO NOTHING
-            """, (
-                user_data['name'],
-                user_data['email'],
-                user_data['password'],
-                user_data.get('phone'),
-                user_data.get('age'),
-                user_data.get('gender'),
-                user_data.get('role', 'patient'),
-                user_data.get('created_at', datetime.now())
-            ))
-            conn.commit()
-            return True
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO users (name, email, password, phone, age, gender, role, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            user_data['name'],
+            user_data['email'],
+            user_data['password'],
+            user_data.get('phone'),
+            user_data.get('age'),
+            user_data.get('gender'),
+            user_data.get('role', 'patient'),
+            user_data.get('created_at', datetime.now())
+        ))
+        conn.commit()
+        return True
     except Exception as e:
-        print(f"❌ Error saving user: {e}")
+        print(f"Error: {e}")
         conn.rollback()
         return False
     finally:
@@ -163,15 +165,12 @@ def get_user(email):
         return None
     
     try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
-            row = cur.fetchone()
-            if row:
-                columns = [desc[0] for desc in cur.description]
-                return dict(zip(columns, row))
-            return None
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        row = cur.fetchone()
+        return dict(row) if row else None
     except Exception as e:
-        print(f"❌ Error getting user: {e}")
+        print(f"Error: {e}")
         return None
     finally:
         conn.close()
