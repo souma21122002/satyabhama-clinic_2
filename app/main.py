@@ -653,6 +653,8 @@ def get_available_slots(doctor_id, date_str):
     
     # Get doctor's availability for this date
     avail = get_availability_for_date(doctor_id, date_str)
+    print(f"🔍 DEBUG: Fetching slots for doctor {doctor_id}, date {date_str}")
+    print(f"   Availability data: {avail}")
     
     if not avail:
         # No availability set for this date - doctor not available
@@ -673,8 +675,16 @@ def get_available_slots(doctor_id, date_str):
     available_slots = []
     
     for slot_time, col_name in slot_mapping.items():
-        # Check if slot is enabled by doctor - convert to int to handle both int and boolean values
-        slot_value = int(avail.get(col_name, 0)) if avail.get(col_name, 0) else 0
+        # Check if slot is enabled by doctor - handle boolean, int, and string values
+        slot_val = avail.get(col_name)
+        # Convert to boolean then to int: True->1, False->0
+        try:
+            slot_value = 1 if slot_val else 0
+        except:
+            slot_value = 0
+        
+        print(f"   {col_name}: {slot_val} -> {slot_value}")
+        
         if not slot_value:
             continue
         
@@ -701,12 +711,14 @@ def get_available_slots(doctor_id, date_str):
             })
     
     if not available_slots:
+        print(f"   ⚠️  No slots available for this date")
         return jsonify({
             'slots': [],
             'available': True,
             'message': 'All slots are fully booked for this date.'
         })
     
+    print(f"   ✓ Found {len(available_slots)} available slots: {[s['time'] for s in available_slots]}")
     return jsonify({'slots': available_slots, 'available': True})
 
 # ========== SERVE UPLOADS ==========
