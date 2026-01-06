@@ -1,6 +1,7 @@
 import os
 import json
-import psycopg
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from datetime import datetime, date
 
 def get_db_connection():
@@ -10,8 +11,11 @@ def get_db_connection():
         if not database_url:
             raise Exception("DATABASE_URL not set")
         
-        # psycopg3 supports both formats
-        conn = psycopg.connect(database_url)
+        # Render uses postgres:// but psycopg2 needs postgresql://
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+        conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
         print(f"❌ Database connection error: {e}")
@@ -94,7 +98,7 @@ def init_db():
             )
         """)
         
-        # Create doctor availability table - DATE WISE
+        # Create doctor availability table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS doctor_availability (
                 id SERIAL PRIMARY KEY,
@@ -117,9 +121,9 @@ def init_db():
         """)
         
         conn.commit()
-        print("✅ Database initialized")
+        print("✅ Database tables created successfully")
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Error creating tables: {e}")
         conn.rollback()
     finally:
         conn.close()
@@ -148,7 +152,7 @@ def save_user(user_data):
         conn.commit()
         return True
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error saving user: {e}")
         conn.rollback()
         return False
     finally:
@@ -166,7 +170,7 @@ def get_user(email):
         row = cur.fetchone()
         return dict(row) if row else None
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error getting user: {e}")
         return None
     finally:
         conn.close()
