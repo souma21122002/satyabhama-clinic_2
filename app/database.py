@@ -566,7 +566,8 @@ def save_appointment(appointment_data):
                 appointment_data.get('reason'),
                 datetime.now()
             ))
-            appointment_id = cur.fetchone()[0]
+            row = cur.fetchone()
+            appointment_id = row['id'] if row else None
             conn.commit()
             return appointment_id
     except Exception as e:
@@ -607,7 +608,8 @@ def get_appointments_for_slot(doctor_id, appointment_date, appointment_time):
                 SELECT COUNT(*) FROM appointments 
                 WHERE doctor_id = %s AND appointment_date = %s AND appointment_time = %s AND status = 'scheduled'
             """, (doctor_id, appointment_date, appointment_time))
-            count = cur.fetchone()[0]
+            row = cur.fetchone()
+            count = row['count'] if row else 0
             return count
     except Exception as e:
         print(f"❌ Error checking slot: {e}")
@@ -627,7 +629,8 @@ def get_slot_booking_count(doctor_id, appointment_date, appointment_time):
                 SELECT COUNT(*) FROM appointments 
                 WHERE doctor_id = %s AND appointment_date = %s AND appointment_time = %s AND status = 'scheduled'
             """, (doctor_id, appointment_date, appointment_time))
-            return cur.fetchone()[0]
+            row = cur.fetchone()
+            return row['count'] if row else 0
     except Exception as e:
         print(f"❌ Error getting slot count: {e}")
         return 0
