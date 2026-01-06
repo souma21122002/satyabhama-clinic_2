@@ -292,7 +292,17 @@
         
         <!-- Footer - Compact -->
         <div class="footer-note">
-            <p style="margin: 2px 0; font-size: 11px;">Booked: {{ appointment.created_at[:19] if appointment.created_at else 'N/A' }} | Computer-generated receipt</p>
+            <p style="margin: 2px 0; font-size: 11px;">
+                {% if appointment.created_at %}
+                    {% if appointment.created_at is string %}
+                        Booked: {{ appointment.created_at[:19] }} | Computer-generated receipt
+                    {% else %}
+                        Booked: {{ appointment.created_at.strftime('%Y-%m-%d %H:%M:%S') }} | Computer-generated receipt
+                    {% endif %}
+                {% else %}
+                    Booked: N/A | Computer-generated receipt
+                {% endif %}
+            </p>
         </div>
         
         <!-- Print Button -->
