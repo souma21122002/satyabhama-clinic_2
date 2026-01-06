@@ -286,12 +286,22 @@ dateInput.addEventListener('change', function() {
 });
 
 function loadDate(dateStr) {
+    console.log('loadDate called with:', dateStr);
     dateInput.value = dateStr;
+    
+    // Scroll to the form
+    document.querySelector('[style*="background: linear-gradient"]').closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     console.log('Loading availability for:', dateStr);
     
     fetch(`/api/doctor/availability/${dateStr}`)
-        .then(r => r.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             console.log('Received data:', data);
             
@@ -307,9 +317,15 @@ function loadDate(dateStr) {
                         cb.checked = true;
                     }
                 });
+                console.log('✓ Successfully loaded slots for', dateStr);
+            } else {
+                console.log('No availability data for this date');
             }
         })
-        .catch(err => console.error('Error:', err));
+        .catch(err => {
+            console.error('Error loading availability:', err);
+            alert('Error loading availability. Check browser console for details.');
+        });
 }
 
 function selectAll() {
