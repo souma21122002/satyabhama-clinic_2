@@ -1,7 +1,6 @@
 import os
 import json
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
 from datetime import datetime, date
 
 def get_db_connection():
@@ -11,11 +10,8 @@ def get_db_connection():
         if not database_url:
             raise Exception("DATABASE_URL not set")
         
-        # Render uses postgres:// but psycopg2 needs postgresql://
-        if database_url.startswith("postgres://"):
-            database_url = database_url.replace("postgres://", "postgresql://", 1)
-        
-        conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+        # psycopg3 supports both formats
+        conn = psycopg.connect(database_url)
         return conn
     except Exception as e:
         print(f"❌ Database connection error: {e}")
