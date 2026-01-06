@@ -159,7 +159,9 @@ def get_user(email):
         cur = conn.cursor()
         cur.execute("SELECT * FROM users WHERE email = ?", (email,))
         row = cur.fetchone()
-        return dict(row) if row else None
+            if row:
+                return dict(row)
+            return None
     except Exception as e:
         print(f"Error: {e}")
         return None
@@ -175,7 +177,8 @@ def load_all_patients():
     try:
         cur = conn.cursor()
         cur.execute("SELECT * FROM users WHERE role = 'patient' ORDER BY created_at DESC")
-        return [dict(row) for row in cur.fetchall()]
+            rows = cur.fetchall()
+            return [dict(row) for row in rows]
     except Exception as e:
         print(f"Error: {e}")
         return []
@@ -226,7 +229,8 @@ def load_consultations():
         cur = conn.cursor()
         cur.execute("SELECT * FROM consultations ORDER BY created_at DESC")
         consultations = []
-        for row in cur.fetchall():
+            rows = cur.fetchall()
+            for row in rows:
             c = dict(row)
             c['images'] = json.loads(c['images']) if isinstance(c['images'], str) else []
             consultations.append(c)
@@ -247,7 +251,8 @@ def load_patient_consultations(patient_email):
         cur = conn.cursor()
         cur.execute("SELECT * FROM consultations WHERE patient_email = ? ORDER BY created_at DESC", (patient_email,))
         consultations = []
-        for row in cur.fetchall():
+            rows = cur.fetchall()
+            for row in rows:
             c = dict(row)
             c['images'] = json.loads(c['images']) if isinstance(c['images'], str) else []
             consultations.append(c)
@@ -374,9 +379,7 @@ def get_user_by_id(user_id):
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
-        if row:
-            columns = [desc[0] for desc in cursor.description]
-            return dict(zip(columns, row))
+            return dict(row) if row else None
         return None
     except Exception as e:
         print(f"❌ Error getting user by id: {e}")
@@ -393,8 +396,7 @@ def get_all_doctors():
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE role = 'doctor' ORDER BY name")
         rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        return [dict(zip(columns, row)) for row in rows]
+            return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading doctors: {e}")
         return []
@@ -416,18 +418,18 @@ def save_doctor_availability(doctor_id, availability_date, slots):
         print(f"   Slots: {slots}")
         
         # Insert new availability
-        cursor.execute("""
-            INSERT INTO doctor_availability 
-            (doctor_id, availability_date, slot_09, slot_10, slot_11, slot_12, slot_13, 
-             slot_18, slot_19, slot_20, slot_21, slot_22)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            doctor_id, availability_date,
-            slots.get('09:00', 0), slots.get('10:00', 0), slots.get('11:00', 0),
-            slots.get('12:00', 0), slots.get('13:00', 0), slots.get('18:00', 0),
-            slots.get('19:00', 0), slots.get('20:00', 0), slots.get('21:00', 0),
-            slots.get('22:00', 0)
-        ))
+            cursor.execute("""
+                INSERT INTO doctor_availability 
+                (doctor_id, availability_date, slot_09, slot_10, slot_11, slot_12, slot_13, 
+                 slot_18, slot_19, slot_20, slot_21, slot_22)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                doctor_id, availability_date,
+                int(bool(slots.get('09:00', 0))), int(bool(slots.get('10:00', 0))), int(bool(slots.get('11:00', 0))),
+                int(bool(slots.get('12:00', 0))), int(bool(slots.get('13:00', 0))), int(bool(slots.get('18:00', 0))),
+                int(bool(slots.get('19:00', 0))), int(bool(slots.get('20:00', 0))), int(bool(slots.get('21:00', 0))),
+                int(bool(slots.get('22:00', 0)))
+            ))
         conn.commit()
         print(f"✅ Availability saved successfully!")
         return True
@@ -567,8 +569,7 @@ def get_appointment(appointment_id):
         cursor.execute("SELECT * FROM appointments WHERE id = ?", (appointment_id,))
         row = cursor.fetchone()
         if row:
-            columns = [desc[0] for desc in cursor.description]
-            return dict(zip(columns, row))
+            return dict(row)
         return None
     except Exception as e:
         print(f"❌ Error getting appointment: {e}")
@@ -619,8 +620,7 @@ def get_patient_appointments(patient_id):
             ORDER BY a.appointment_date DESC, a.appointment_time DESC
         """, (patient_id,))
         rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        return [dict(zip(columns, row)) for row in rows]
+        return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading patient appointments: {e}")
         return []
@@ -642,8 +642,7 @@ def get_doctor_appointments(doctor_id):
             ORDER BY a.appointment_date, a.appointment_time
         """, (doctor_id,))
         rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        return [dict(zip(columns, row)) for row in rows]
+        return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading doctor appointments: {e}")
         return []

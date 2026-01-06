@@ -185,8 +185,7 @@ def load_all_patients():
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM users WHERE role = 'patient' ORDER BY created_at DESC")
             rows = cur.fetchall()
-            columns = [desc[0] for desc in cur.description]
-            return [dict(zip(columns, row)) for row in rows]
+            return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading patients: {e}")
         return []
@@ -238,10 +237,9 @@ def load_consultations():
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM consultations ORDER BY created_at DESC")
             rows = cur.fetchall()
-            columns = [desc[0] for desc in cur.description]
             consultations = []
             for row in rows:
-                cons = dict(zip(columns, row))
+                cons = dict(row)
                 if cons.get('images'):
                     cons['images'] = json.loads(cons['images']) if isinstance(cons['images'], str) else cons['images']
                 else:
@@ -266,10 +264,9 @@ def load_patient_consultations(patient_email):
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM consultations WHERE patient_email = %s ORDER BY created_at DESC", (patient_email,))
             rows = cur.fetchall()
-            columns = [desc[0] for desc in cur.description]
             consultations = []
             for row in rows:
-                cons = dict(zip(columns, row))
+                cons = dict(row)
                 if cons.get('images'):
                     cons['images'] = json.loads(cons['images']) if isinstance(cons['images'], str) else cons['images']
                 else:
@@ -424,8 +421,7 @@ def get_user_by_id(user_id):
             cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             row = cur.fetchone()
             if row:
-                columns = [desc[0] for desc in cur.description]
-                return dict(zip(columns, row))
+                return dict(row)
             return None
     except Exception as e:
         print(f"❌ Error getting user by id: {e}")
@@ -443,8 +439,7 @@ def get_all_doctors():
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM users WHERE role = 'doctor' ORDER BY name")
             rows = cur.fetchall()
-            columns = [desc[0] for desc in cur.description]
-            return [dict(zip(columns, row)) for row in rows]
+            return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading doctors: {e}")
         return []
@@ -469,10 +464,10 @@ def save_doctor_availability(doctor_id, availability_date, slots):
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 doctor_id, availability_date,
-                slots.get('09:00', False), slots.get('10:00', False), slots.get('11:00', False),
-                slots.get('12:00', False), slots.get('13:00', False), slots.get('18:00', False),
-                slots.get('19:00', False), slots.get('20:00', False), slots.get('21:00', False),
-                slots.get('22:00', False)
+                int(bool(slots.get('09:00', False))), int(bool(slots.get('10:00', False))), int(bool(slots.get('11:00', False))),
+                int(bool(slots.get('12:00', False))), int(bool(slots.get('13:00', False))), int(bool(slots.get('18:00', False))),
+                int(bool(slots.get('19:00', False))), int(bool(slots.get('20:00', False))), int(bool(slots.get('21:00', False))),
+                int(bool(slots.get('22:00', False)))
             ))
             conn.commit()
             return True
@@ -497,8 +492,7 @@ def get_doctor_availability(doctor_id):
                 ORDER BY availability_date
             """, (doctor_id,))
             rows = cur.fetchall()
-            columns = [desc[0] for desc in cur.description]
-            return [dict(zip(columns, row)) for row in rows]
+            return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading availability: {e}")
         return []
@@ -519,8 +513,7 @@ def get_availability_for_date(doctor_id, availability_date):
             """, (doctor_id, availability_date))
             row = cur.fetchone()
             if row:
-                columns = [desc[0] for desc in cur.description]
-                return dict(zip(columns, row))
+                return dict(row)
             return None
     except Exception as e:
         print(f"❌ Error loading date availability: {e}")
@@ -594,8 +587,7 @@ def get_appointment(appointment_id):
             cur.execute("SELECT * FROM appointments WHERE id = %s", (appointment_id,))
             row = cur.fetchone()
             if row:
-                columns = [desc[0] for desc in cur.description]
-                return dict(zip(columns, row))
+                return dict(row)
             return None
     except Exception as e:
         print(f"❌ Error getting appointment: {e}")
@@ -658,8 +650,7 @@ def get_patient_appointments(patient_id):
                 ORDER BY a.appointment_date DESC, a.appointment_time DESC
             """, (patient_id,))
             rows = cur.fetchall()
-            columns = [desc[0] for desc in cur.description]
-            return [dict(zip(columns, row)) for row in rows]
+            return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading patient appointments: {e}")
         return []
@@ -682,8 +673,7 @@ def get_doctor_appointments(doctor_id):
                 ORDER BY a.appointment_date, a.appointment_time
             """, (doctor_id,))
             rows = cur.fetchall()
-            columns = [desc[0] for desc in cur.description]
-            return [dict(zip(columns, row)) for row in rows]
+            return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading doctor appointments: {e}")
         return []
