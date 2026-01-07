@@ -133,9 +133,13 @@
         border-left: 4px solid #adb5bd;
     }
 
+    .calendar-day.status-available { background: rgba(25, 135, 84, 0.05); }
+    .calendar-day.status-partial { background: rgba(253, 126, 20, 0.06); }
+    .calendar-day.status-full { background: rgba(220, 53, 69, 0.05); }
+
     .calendar-day.selected {
         border: 2px solid #764ba2;
-        box-shadow: 0 0 0 4px rgba(118, 75, 162, 0.15);
+        box-shadow: 0 0 0 5px rgba(118, 75, 162, 0.18);
     }
 
     .legend-chip {
@@ -277,15 +281,6 @@
                 </div>
             </div>
 
-            <div class="card mt-3 shadow" style="border-radius: 20px;">
-                <div class="card-header bg-primary text-white" style="border-radius: 20px 20px 0 0;">
-                    <h6 class="mb-0"><i class="bi bi-search me-2"></i>Selected Date Overview</h6>
-                </div>
-                <div class="card-body" data-date-details>
-                    <p class="text-muted mb-0">Select a date to review configured slots and bookings.</p>
-                </div>
-            </div>
-
             <div class="card mt-3" style="border-radius: 15px;">
                 <div class="card-body">
                     <h6 class="text-warning"><i class="bi bi-lightbulb me-2"></i>Quick tips</h6>
@@ -295,6 +290,33 @@
                         <li>Patients only see the slots you enable here.</li>
                     </ul>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Date details modal -->
+<div class="modal fade" id="dateDetailsModal" tabindex="-1" aria-labelledby="dateDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-content" style="border-radius: 18px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                <div class="d-flex flex-column">
+                    <h5 class="modal-title text-white" id="dateDetailsModalLabel">Date details</h5>
+                    <small class="text-white-50" data-modal-subtitle></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" data-modal-body>
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border" role="status" aria-hidden="true"></div>
+                    <div class="mt-3">Loading…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-modal-edit>
+                    <i class="bi bi-pencil-square me-2"></i>Edit in form
+                </button>
             </div>
         </div>
     </div>
@@ -310,7 +332,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const offDayReasonInput = document.getElementById('offDayReasonInput');
     const calendarGrid = document.querySelector('[data-calendar-grid]');
     const calendarMonthLabel = document.querySelector('[data-calendar-month]');
-    const detailsContainer = document.querySelector('[data-date-details]');
+    const modalEl = document.getElementById('dateDetailsModal');
+    const modalBody = document.querySelector('[data-modal-body]');
+    const modalSubtitle = document.querySelector('[data-modal-subtitle]');
+    const modalEditButton = document.querySelector('[data-modal-edit]');
     const calendarNavButtons = document.querySelectorAll('[data-calendar-nav]');
     const actionButtons = {
         selectAll: document.querySelector('[data-action="select-all"]'),
@@ -341,6 +366,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let indiaTodayISO = null;
     let todayWatcherStarted = false;
 
+    const modalInstance = (typeof bootstrap !== 'undefined' && modalEl)
+        ? new bootstrap.Modal(modalEl)
+        : null;
+
     if (availabilityForm) {
         availabilityForm.addEventListener('submit', () => {
             if (!formActionInput.value) {
@@ -358,6 +387,17 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedDate = value;
             updateCalendarSelection();
             loadDate(value, calendarSummary?.days?.[value]);
+        });
+    }
+
+    if (modalEditButton) {
+        modalEditButton.addEventListener('click', () => {
+            if (availabilityForm) {
+                availabilityForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if (modalInstance) {
+                modalInstance.hide();
+            }
         });
     }
 
@@ -597,6 +637,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        openDetailsModal(dateStr, summaryDay);
+
         setFormAction('save');
         if (offDayReasonInput) {
             offDayReasonInput.value = '';
@@ -604,10 +646,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSlotCheckboxes(false);
         setSlotInputsDisabled(false);
         updateActionButtons(null);
-
-        if (availabilityForm) {
-            availabilityForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
 
         fetch(`/api/doctor/availability/${dateStr}`)
             .then((response) => {
@@ -636,75 +674,132 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch((error) => {
                 console.error(error);
-                alert('Unable to load availability for the selected date.');
                 updateActionButtons(null);
                 renderDateDetails(dateStr, null, summaryDay);
             });
     }
 
     function renderDateDetails(dateStr, apiData, summaryDay) {
-        if (!detailsContainer) {
+        if (!modalBody) {
             return;
         }
 
         const dateLabel = indiaDisplayFormatter.format(new Date(`${dateStr}T00:00:00`));
-        detailsContainer.innerHTML = '';
-
-        const heading = document.createElement('h5');
-        heading.className = 'fw-semibold';
-        heading.textContent = dateLabel;
-        detailsContainer.appendChild(heading);
-
-        if (!apiData || (!apiData.exists && !apiData.is_off_day)) {
-            const info = document.createElement('p');
-            info.className = 'text-muted';
-            info.textContent = 'No availability configured yet.';
-            detailsContainer.appendChild(info);
+        if (modalSubtitle) {
+            modalSubtitle.textContent = dateLabel;
         }
 
-        if (apiData?.is_off_day) {
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-secondary';
-            alert.innerHTML = `<i class="bi bi-slash-circle me-2"></i>This date is marked as an off day${apiData.off_day_reason ? `: ${apiData.off_day_reason}` : ''}.`;
-            detailsContainer.appendChild(alert);
+        const bookings = summaryDay?.bookings || {};
+        const status = summaryDay?.status || (apiData?.is_off_day ? 'off' : 'unset');
+
+        const statusBadgeClass = {
+            available: 'bg-success',
+            partial: 'bg-warning text-dark',
+            full: 'bg-danger',
+            off: 'bg-secondary',
+            clear: 'bg-light text-muted border',
+            unset: 'bg-light text-muted border'
+        };
+
+        const statusLabel = {
+            available: 'Available',
+            partial: 'Partially booked',
+            full: 'Full',
+            off: 'Off day',
+            clear: 'No slots',
+            unset: 'Not set'
+        };
+
+        modalBody.innerHTML = '';
+
+        const headerRow = document.createElement('div');
+        headerRow.className = 'd-flex flex-wrap align-items-center gap-2 mb-3';
+        headerRow.innerHTML = `
+            <span class="badge ${statusBadgeClass[status] || statusBadgeClass.unset}" style="border-radius:999px;padding:8px 12px;">
+                ${statusLabel[status] || 'Not set'}
+            </span>
+            <span class="text-muted small">Click “Edit in form” to change slots</span>
+        `;
+        modalBody.appendChild(headerRow);
+
+        if (!apiData) {
+            const info = document.createElement('div');
+            info.className = 'alert alert-warning';
+            info.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Could not load details for this date.';
+            modalBody.appendChild(info);
+            return;
         }
 
-        if (apiData?.slots) {
-            const slotWrapper = document.createElement('div');
-            slotWrapper.className = 'mt-3';
-
-            Object.entries(apiData.slots).forEach(([time, enabled]) => {
-                const slotPill = document.createElement('div');
-                slotPill.className = 'slot-pill d-flex justify-content-between align-items-center';
-
-                const timeEl = document.createElement('div');
-                timeEl.className = 'slot-time';
-                timeEl.textContent = formatDisplayTime(time);
-                slotPill.appendChild(timeEl);
-
-                const statusEl = document.createElement('div');
-                statusEl.className = `badge ${enabled ? 'bg-success' : 'bg-light text-muted border'}`;
-                statusEl.textContent = enabled ? 'Enabled' : 'Disabled';
-                slotPill.appendChild(statusEl);
-
-                if (summaryDay?.booked_slots?.[time]) {
-                    const note = document.createElement('div');
-                    note.className = 'slot-note text-muted';
-                    note.textContent = `${summaryDay.booked_slots[time]} booked`;
-                    slotPill.appendChild(note);
-                }
-
-                slotWrapper.appendChild(slotPill);
-            });
-
-            detailsContainer.appendChild(slotWrapper);
+        if (apiData.is_off_day) {
+            const offAlert = document.createElement('div');
+            offAlert.className = 'alert alert-secondary';
+            offAlert.innerHTML = `<i class="bi bi-slash-circle me-2"></i>Marked as off day${apiData.off_day_reason ? `: ${apiData.off_day_reason}` : ''}.`;
+            modalBody.appendChild(offAlert);
         }
 
-        if (summaryDay && typeof summaryDay.booked === 'number') {
-            const stat = document.createElement('div');
-            stat.className = 'alert alert-info mt-3 mb-0';
-            stat.innerHTML = `<i class="bi bi-people me-2"></i>${summaryDay.booked} appointment(s) booked out of ${summaryDay.capacity || 'configured'} slots.`;
-            detailsContainer.appendChild(stat);
+        const list = document.createElement('div');
+        list.className = 'mt-2';
+
+        const slotDetails = apiData.slot_details || {};
+        const slotTimes = Object.keys(slotDetails).length
+            ? Object.keys(slotDetails)
+            : Object.keys(apiData.slots || {});
+
+        slotTimes.sort();
+
+        slotTimes.forEach((time) => {
+            const detail = slotDetails[time] || {};
+            const enabledRaw = apiData.slots ? apiData.slots[time] : 0;
+            const enabled = enabledRaw === 1 || enabledRaw === true || enabledRaw === '1';
+            const booked = typeof detail.booked === 'number'
+                ? detail.booked
+                : (bookings[time] || 0);
+
+            const pill = document.createElement('div');
+            pill.className = 'slot-pill d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2';
+            pill.innerHTML = `
+                <div class="d-flex align-items-center gap-3">
+                    <div class="slot-time">${formatDisplayTime(time)}</div>
+                    <span class="badge ${enabled ? 'bg-success' : 'bg-light text-muted border'}">${enabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div class="text-muted small">${enabled ? `${booked} booked` : '—'}</div>
+            `;
+            list.appendChild(pill);
+        });
+
+        modalBody.appendChild(list);
+
+        if (apiData.summary) {
+            const sum = document.createElement('div');
+            sum.className = 'alert alert-info mt-3 mb-0';
+            sum.innerHTML = `<i class="bi bi-people me-2"></i>${apiData.summary.total_booked} booked out of ${apiData.summary.total_capacity} total capacity.`;
+            modalBody.appendChild(sum);
+        }
+    }
+
+    function openDetailsModal(dateStr, summaryDay) {
+        if (!modalBody) {
+            return;
+        }
+        const dateLabel = indiaDisplayFormatter.format(new Date(`${dateStr}T00:00:00`));
+        if (modalSubtitle) {
+            modalSubtitle.textContent = dateLabel;
+        }
+
+        const status = summaryDay?.status || 'unset';
+        const hint = document.createElement('div');
+        hint.className = 'text-muted small mb-2';
+        hint.textContent = status === 'unset' ? 'Not configured yet.' : 'Loading details…';
+
+        modalBody.innerHTML = '';
+        modalBody.appendChild(hint);
+        modalBody.insertAdjacentHTML(
+            'beforeend',
+            '<div class="text-center py-4 text-muted"><div class="spinner-border" role="status" aria-hidden="true"></div><div class="mt-3">Loading…</div></div>'
+        );
+
+        if (modalInstance) {
+            modalInstance.show();
         }
     }
 
