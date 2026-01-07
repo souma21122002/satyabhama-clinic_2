@@ -137,6 +137,13 @@
     .calendar-day.status-partial { background: rgba(253, 126, 20, 0.06); }
     .calendar-day.status-full { background: rgba(220, 53, 69, 0.05); }
 
+    .calendar-day .calendar-meta { opacity: 0.95; }
+
+    .calendar-day.status-available .calendar-meta { color: #198754; }
+    .calendar-day.status-partial .calendar-meta { color: #fd7e14; }
+    .calendar-day.status-full .calendar-meta { color: #dc3545; }
+    .calendar-day.status-off .calendar-meta { color: #6c757d; }
+
     .calendar-day.selected {
         border: 2px solid #764ba2;
         box-shadow: 0 0 0 5px rgba(118, 75, 162, 0.18);
@@ -386,7 +393,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             selectedDate = value;
             updateCalendarSelection();
-            loadDate(value, calendarSummary?.days?.[value]);
+            // Do NOT show the modal when using the date input; only show it when a calendar day is clicked.
+            loadDate(value, calendarSummary?.days?.[value], { showModal: false });
         });
     }
 
@@ -542,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dateInput.value = targetDate;
         }
         updateCalendarSelection();
-        loadDate(targetDate, data.days?.[targetDate]);
+        loadDate(targetDate, data.days?.[targetDate], { showModal: false });
     }
 
     const STATUS_CLASS = {
@@ -619,7 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dateInput) {
             dateInput.value = dateStr;
         }
-        loadDate(dateStr, calendarSummary?.days?.[dateStr]);
+        loadDate(dateStr, calendarSummary?.days?.[dateStr], { showModal: true });
     }
 
     function updateCalendarSelection() {
@@ -632,12 +640,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function loadDate(dateStr, summaryDay) {
+    function loadDate(dateStr, summaryDay, options) {
         if (!dateStr) {
             return;
         }
 
-        openDetailsModal(dateStr, summaryDay);
+        const showModal = Boolean(options && options.showModal);
+        if (showModal) {
+            openDetailsModal(dateStr, summaryDay);
+        }
 
         setFormAction('save');
         if (offDayReasonInput) {
@@ -670,12 +681,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     offDayReasonInput.value = data.off_day_reason || '';
                 }
                 updateActionButtons(data);
-                renderDateDetails(dateStr, data, summaryDay);
+                if (showModal) {
+                    renderDateDetails(dateStr, data, summaryDay);
+                }
             })
             .catch((error) => {
                 console.error(error);
                 updateActionButtons(null);
-                renderDateDetails(dateStr, null, summaryDay);
+                if (showModal) {
+                    renderDateDetails(dateStr, null, summaryDay);
+                }
             });
     }
 
@@ -737,9 +752,6 @@ document.addEventListener('DOMContentLoaded', function() {
             modalBody.appendChild(offAlert);
         }
 
-        const list = document.createElement('div');
-        list.className = 'mt-2';
-
         const slotDetails = apiData.slot_details || {};
         const slotTimes = Object.keys(slotDetails).length
             ? Object.keys(slotDetails)
@@ -747,27 +759,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
         slotTimes.sort();
 
+        const enabledTimes = [];
+        const disabledTimes = [];
         slotTimes.forEach((time) => {
-            const detail = slotDetails[time] || {};
             const enabledRaw = apiData.slots ? apiData.slots[time] : 0;
             const enabled = enabledRaw === 1 || enabledRaw === true || enabledRaw === '1';
-            const booked = typeof detail.booked === 'number'
-                ? detail.booked
-                : (bookings[time] || 0);
-
-            const pill = document.createElement('div');
-            pill.className = 'slot-pill d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2';
-            pill.innerHTML = `
-                <div class="d-flex align-items-center gap-3">
-                    <div class="slot-time">${formatDisplayTime(time)}</div>
-                    <span class="badge ${enabled ? 'bg-success' : 'bg-light text-muted border'}">${enabled ? 'Enabled' : 'Disabled'}</span>
-                </div>
-                <div class="text-muted small">${enabled ? `${booked} booked` : '—'}</div>
-            `;
-            list.appendChild(pill);
+            (enabled ? enabledTimes : disabledTimes).push(time);
         });
 
-        modalBody.appendChild(list);
+        const enabledSection = document.createElement('div');
+        enabledSection.className = 'mt-2';
+        const enabledTitle = document.createElement('div');
+        enabledTitle.className = 'fw-semibold mb-2';
+        enabledTitle.textContent = 'Enabled slots';
+        enabledSection.appendChild(enabledTitle);
+
+        if (!enabledTimes.length) {
+            const empty = document.createElement('div');
+            empty.className = 'text-muted';
+            empty.textContent = apiData.is_off_day ? 'No slots (off day).' : 'No slots enabled for this date.';
+            enabledSection.appendChild(empty);
+        } else {
+            enabledTimes.forEach((time) => {
+                const detail = slotDetails[time] || {};
+                const booked = typeof detail.booked === 'number' ? detail.booked : (bookings[time] || 0);
+                const pill = document.createElement('div');
+                pill.className = 'slot-pill d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2';
+                pill.innerHTML = `
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="slot-time">${formatDisplayTime(time)}</div>
+                        <span class="badge bg-success">Enabled</span>
+                    </div>
+                    <div class="text-muted small">${booked} booked</div>
+                `;
+                enabledSection.appendChild(pill);
+            });
+        }
+
+        modalBody.appendChild(enabledSection);
+
+        if (disabledTimes.length) {
+            const detailsEl = document.createElement('details');
+            detailsEl.className = 'mt-3';
+            detailsEl.innerHTML = `<summary class="fw-semibold">Disabled slots (${disabledTimes.length})</summary>`;
+            const wrap = document.createElement('div');
+            wrap.className = 'mt-2';
+            disabledTimes.forEach((time) => {
+                const pill = document.createElement('div');
+                pill.className = 'slot-pill d-flex justify-content-between align-items-center';
+                pill.innerHTML = `
+                    <div class="slot-time">${formatDisplayTime(time)}</div>
+                    <span class="badge bg-light text-muted border">Disabled</span>
+                `;
+                wrap.appendChild(pill);
+            });
+            detailsEl.appendChild(wrap);
+            modalBody.appendChild(detailsEl);
+        }
 
         if (apiData.summary) {
             const sum = document.createElement('div');
