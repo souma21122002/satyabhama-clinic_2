@@ -13,7 +13,8 @@ if os.getenv("FLASK_ENV") == "production":
         get_doctor_availability, get_availability_for_day, save_appointment,
         get_appointment, get_appointments_for_slot, get_patient_appointments,
         get_doctor_appointments, update_appointment_status, reschedule_appointment,
-        update_appointment_notes, get_slot_booking_count, get_availability_for_date, delete_doctor_availability
+        update_appointment_notes, get_slot_booking_count, get_availability_for_date, delete_doctor_availability,
+        save_site_notice, get_active_site_notice, clear_site_notice
     )
 else:
     from app.database_local import (
@@ -24,7 +25,8 @@ else:
         get_doctor_availability, get_availability_for_day, save_appointment,
         get_appointment, get_appointments_for_slot, get_patient_appointments,
         get_doctor_appointments, update_appointment_status, reschedule_appointment,
-        update_appointment_notes, get_slot_booking_count, get_availability_for_date, delete_doctor_availability
+        update_appointment_notes, get_slot_booking_count, get_availability_for_date, delete_doctor_availability,
+        save_site_notice, get_active_site_notice, clear_site_notice
     )
 
 from datetime import datetime, date, timedelta
@@ -79,9 +81,32 @@ def add_security_headers(response):
 def allowed_file(filename, allowed_set):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
 
+
+def build_notice_context(notice):
+    if not notice:
+        return None
+
+    enriched = dict(notice)
+    timestamp = enriched.get("updated_at") or enriched.get("created_at")
+    display_value = None
+
+    if isinstance(timestamp, str):
+        try:
+            parsed = datetime.fromisoformat(timestamp)
+            display_value = parsed.strftime('%d %b %Y, %I:%M %p')
+        except ValueError:
+            display_value = timestamp
+    elif isinstance(timestamp, (datetime, date)):
+        parsed = timestamp if isinstance(timestamp, datetime) else datetime.combine(timestamp, datetime.min.time())
+        display_value = parsed.strftime('%d %b %Y, %I:%M %p')
+
+    enriched['display_timestamp'] = display_value
+    return enriched
+
 @app.route("/")
 def home():
-    return render_template("index.html")
+    notice = build_notice_context(get_active_site_notice())
+    return render_template("index.html", site_notice=notice)
 
 @app.route("/find-remedy", methods=["POST"])
 def find_remedy():
@@ -228,10 +253,13 @@ def patient_dashboard():
     upcoming = sorted(upcoming, key=lambda x: (x['appointment_date'], x['appointment_time']))[:5]
     past = sorted(past, key=lambda x: (x['appointment_date'], x['appointment_time']), reverse=True)[:5]
     
+    notice = build_notice_context(get_active_site_notice())
+
     return render_template("patient/dashboard.html", 
                           consultations=consultations,
                           upcoming_appointments=upcoming,
-                          past_appointments=past)
+                          past_appointments=past,
+                          site_notice=notice)
 
 @app.route("/patient/consult", methods=["GET", "POST"])
 def patient_consult():
@@ -277,11 +305,25 @@ def patient_consult():
     
     return render_template("patient/consult.html")
 
-@app.route("/doctor/dashboard")
+@app.route("/doctor/dashboard", methods=["GET", "POST"])
 def doctor_dashboard():
     if "user" not in session or session["user"]["role"] != "doctor":
         flash("Please login as doctor", "warning")
         return redirect(url_for("doctor_login"))
+
+    if request.method == "POST" and request.form.get("form_type") == "site_notice":
+        title = (request.form.get("notice_title") or "").strip()
+        message = (request.form.get("notice_message") or "").strip()
+
+        if not title or not message:
+            flash("Title and message are required to publish a notice.", "danger")
+        else:
+            saved = save_site_notice(title, message, session["user"]["id"])
+            if saved:
+                flash("Notice published successfully.", "success")
+            else:
+                flash("Unable to publish notice. Please try again.", "danger")
+        return redirect(url_for("doctor_dashboard"))
     
     consultations = load_consultations()
     pending_consultations = [c for c in consultations if c.get('status') == 'pending']
@@ -307,6 +349,8 @@ def doctor_dashboard():
     
     # Limit to next 5 upcoming appointments
     upcoming_appointments = sorted(upcoming_appointments, key=lambda x: (x['appointment_date'], x['appointment_time']))[:5]
+
+    site_notice = build_notice_context(get_active_site_notice())
     
     return render_template(
         "doctor/dashboard.html",
@@ -315,8 +359,22 @@ def doctor_dashboard():
         replied_consultations=replied_consultations,
         pending_count=pending_count,
         replied_count=replied_count,
-        upcoming_appointments=upcoming_appointments
+        upcoming_appointments=upcoming_appointments,
+        site_notice=site_notice
     )
+
+
+@app.route("/doctor/site-notice/clear", methods=["POST"])
+def doctor_clear_notice():
+    if "user" not in session or session["user"]["role"] != "doctor":
+        flash("Please login as doctor", "warning")
+        return redirect(url_for("doctor_login"))
+
+    if clear_site_notice():
+        flash("Notice cleared.", "info")
+    else:
+        flash("Unable to clear notice. Please try again.", "danger")
+    return redirect(url_for("doctor_dashboard"))
 
 @app.route("/doctor/reply/<int:consultation_id>", methods=["GET", "POST"])
 def doctor_reply(consultation_id):

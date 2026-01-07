@@ -57,6 +57,12 @@
         gap: 10px;
         margin-top: 15px;
     }
+    .notice-banner {
+        border-left: 4px solid #ff7043;
+        background: linear-gradient(135deg, rgba(255, 179, 0, 0.12), rgba(255, 112, 67, 0.08));
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(255, 112, 67, 0.15);
+    }
 </style>
 {% endblock %}
 
@@ -69,6 +75,20 @@
 </div>
 
 <div class="container">
+    {% if site_notice %}
+    <div class="notice-banner p-4 mb-4">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+            <div class="me-md-4">
+                <h5 class="mb-1 text-dark"><i class="bi bi-megaphone text-warning me-2"></i>{{ site_notice.title }}</h5>
+                <p class="mb-0 text-muted">{{ site_notice.message }}</p>
+            </div>
+            {% if site_notice.display_timestamp %}
+            <small class="text-secondary mt-3 mt-md-0">Updated {{ site_notice.display_timestamp }}</small>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- SECTION 1: APPOINTMENTS (CLINIC VISITS) -->
     <div class="section-card">
         <div class="section-header appointment-gradient">

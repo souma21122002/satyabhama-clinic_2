@@ -119,6 +119,20 @@ def init_db():
                 UNIQUE(doctor_id, availability_date)
             )
         """)
+
+        # Create site notices table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS site_notices (
+                id SERIAL PRIMARY KEY,
+                doctor_id INTEGER,
+                title VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (doctor_id) REFERENCES users(id)
+            )
+        """)
         
         conn.commit()
         print("✅ Database tables created successfully")
@@ -539,6 +553,92 @@ def delete_doctor_availability(doctor_id, availability_date):
             return True
     except Exception as e:
         print(f"❌ Error deleting availability: {e}")
+        return False
+    finally:
+        conn.close()
+
+# ========== SITE NOTICE FUNCTIONS ==========
+
+def save_site_notice(title, message, doctor_id=None):
+    """Create a new site notice and mark it active"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE site_notices SET is_active = FALSE")
+            cur.execute(
+                """
+                INSERT INTO site_notices (doctor_id, title, message, is_active, created_at, updated_at)
+                VALUES (%s, %s, %s, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING id
+                """,
+                (doctor_id, title, message)
+            )
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"❌ Error saving site notice: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def get_active_site_notice():
+    """Fetch the latest active site notice"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, doctor_id, title, message, created_at, updated_at
+                FROM site_notices
+                WHERE is_active = TRUE
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+
+            notice = dict(row)
+            for ts_field in ("created_at", "updated_at"):
+                if isinstance(notice.get(ts_field), (datetime, date)):
+                    notice[ts_field] = notice[ts_field].isoformat()
+            return notice
+    except Exception as e:
+        print(f"❌ Error fetching site notice: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def clear_site_notice():
+    """Deactivate all active notices"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE site_notices
+                SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
+                WHERE is_active = TRUE
+                """
+            )
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"❌ Error clearing site notice: {e}")
+        conn.rollback()
         return False
     finally:
         conn.close()

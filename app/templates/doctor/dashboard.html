@@ -52,6 +52,13 @@
     .appointment-gradient {
         background: linear-gradient(135deg, #667eea, #764ba2);
     }
+    .notice-gradient {
+        background: linear-gradient(135deg, #ffb300, #ff7043);
+    }
+    .notice-preview {
+        border-left: 4px solid #ff7043;
+        background: rgba(255, 179, 0, 0.12);
+    }
     .action-buttons {
         display: flex;
         gap: 10px;
@@ -78,6 +85,68 @@
 </div>
 
 <div class="container">
+    <!-- SECTION: SITE NOTICE -->
+    <div class="section-card">
+        <div class="section-header notice-gradient">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3><i class="bi bi-megaphone me-3"></i>Clinic Notice Board</h3>
+                    <p>Publish important updates for patients. Latest notice appears on home and patient dashboards.</p>
+                </div>
+                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                    <span class="badge bg-dark bg-opacity-50">Visible to patients</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            {% if site_notice %}
+            <div class="alert notice-preview p-4 mb-4">
+                <div class="d-flex align-items-start">
+                    <div class="me-3" style="font-size: 2rem;">📣</div>
+                    <div>
+                        <h5 class="mb-2 text-dark">{{ site_notice.title }}</h5>
+                        <p class="mb-3 text-muted">{{ site_notice.message }}</p>
+                        <small class="text-secondary">
+                            Last updated: {{ site_notice.display_timestamp or 'N/A' }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-secondary d-flex align-items-center" role="alert">
+                <i class="bi bi-info-circle me-3"></i>
+                <div>No notice published yet. Patients will not see a notice until you post one.</div>
+            </div>
+            {% endif %}
+
+            <form id="noticePublishForm" method="POST" action="{{ url_for('doctor_dashboard') }}" class="row g-3">
+                <input type="hidden" name="form_type" value="site_notice">
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Notice Title</label>
+                    <input type="text" name="notice_title" class="form-control" placeholder="e.g. Clinic closed on Sunday" value="{{ site_notice.title if site_notice else '' }}" maxlength="120" required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Notice Message</label>
+                    <textarea name="notice_message" class="form-control" rows="4" placeholder="Write the detailed notice for patients..." required>{{ site_notice.message if site_notice else '' }}</textarea>
+                    <small class="text-muted">Keep the message short and patient-friendly. Markdown is not supported.</small>
+                </div>
+            </form>
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <button type="submit" form="noticePublishForm" class="btn btn-warning text-dark">
+                    <i class="bi bi-megaphone me-1"></i> Publish Notice
+                </button>
+                {% if site_notice %}
+                <button type="submit" form="clearNoticeForm" class="btn btn-outline-secondary">
+                    <i class="bi bi-trash"></i> Clear Notice
+                </button>
+                {% endif %}
+            </div>
+            {% if site_notice %}
+            <form id="clearNoticeForm" method="POST" action="{{ url_for('doctor_clear_notice') }}"></form>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- SECTION 1: ONLINE CONSULTATIONS -->
     <div class="section-card">
         <div class="section-header consultation-gradient">

@@ -30,6 +30,21 @@
                     <i class="bi bi-telephone"></i> +91 9932199936 | +91 7718494401
                 </p>
                 <p class="mb-5">AI-Powered Remedy Finder & Expert Homeopathic Consultations</p>
+
+                {% if site_notice %}
+                <div class="alert alert-warning text-start shadow-sm mx-auto mb-4" style="max-width: 720px; border-left: 6px solid #ff7043; background: rgba(255, 249, 196, 0.9);">
+                    <div class="d-flex align-items-start">
+                        <span class="me-3" style="font-size: 2rem;">📣</span>
+                        <div>
+                            <h5 class="mb-1">{{ site_notice.title }}</h5>
+                            <p class="mb-2">{{ site_notice.message }}</p>
+                            {% if site_notice.display_timestamp %}
+                            <small class="text-muted">Updated {{ site_notice.display_timestamp }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 
                 {% if not session.get('user') or (session.get('user') and session.user.role == 'patient') %}
                 <a href="#remedy-finder" class="btn btn-light btn-lg me-3 fw-bold">
