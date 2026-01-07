@@ -527,21 +527,6 @@
 </div>
 
 <script>
-// Rotate notices in preview for doctor view
-(function() {
-    const container = document.querySelector('[data-notice-rotator]');
-    if (!container) return;
-    const items = container.querySelectorAll('[data-notice-item]');
-    if (items.length <= 1) return;
-    let current = 0;
-    const interval = parseInt(container.dataset.interval || '7000', 10);
-    setInterval(() => {
-        items[current].classList.add('d-none');
-        current = (current + 1) % items.length;
-        items[current].classList.remove('d-none');
-    }, interval);
-})();
-
 function completeAppointment(id) {
     document.getElementById('completeForm').action = `/doctor/complete-appointment/${id}`;
     new bootstrap.Modal(document.getElementById('completeModal')).show();

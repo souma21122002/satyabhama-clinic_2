@@ -41,7 +41,7 @@
                             <p class="mb-2">{{ notice.message }}</p>
                             <div class="d-flex flex-wrap align-items-center gap-2">
                                 {% if notice.display_timestamp %}
-</html>
+                                <small class="text-muted">Updated {{ notice.display_timestamp }}</small>
                                 {% endif %}
                                 <a href="{{ url_for('notices_page') }}" class="small text-decoration-none">View all notices &raquo;</a>
                             </div>
@@ -356,21 +356,5 @@
         </div>
         {% endblock %}
     </div>
-
-    <script>
-    (function() {
-        const container = document.querySelector('[data-notice-rotator]');
-        if (!container) return;
-        const items = container.querySelectorAll('[data-notice-item]');
-        if (items.length <= 1) return;
-        let current = 0;
-        const interval = parseInt(container.dataset.interval || '7000', 10);
-        setInterval(() => {
-            items[current].classList.add('d-none');
-            current = (current + 1) % items.length;
-            items[current].classList.remove('d-none');
-        }, interval);
-    })();
-    </script>
 </body>
 </html>
