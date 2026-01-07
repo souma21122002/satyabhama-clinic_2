@@ -47,14 +47,44 @@ const timeSelect = document.getElementById('appointment_time');
 dateInput.min = new Date().toISOString().split('T')[0];
 
 dateInput.addEventListener('change', function() {
-    fetch(`/api/available-slots/${doctorId}/${this.value}`)
-        .then(r => r.json())
+    const selectedDate = this.value;
+    timeSelect.innerHTML = '<option value="">Loading slots...</option>';
+    timeSelect.disabled = true;
+
+    if (!selectedDate) {
+        timeSelect.innerHTML = '<option value="">-- Select date first --</option>';
+        return;
+    }
+
+    fetch(`/api/available-slots/${doctorId}/${selectedDate}`)
+        .then(response => response.json())
         .then(data => {
+            const hasSlots = data && Array.isArray(data.slots) && data.slots.length > 0;
             timeSelect.innerHTML = '<option value="">-- Select time --</option>';
-            if (data.slots) {
-                data.slots.forEach(s => timeSelect.innerHTML += `<option value="${s}">${s}</option>`);
+
+            if (!data || data.available === false) {
+                const message = data && data.message ? data.message : 'Doctor not available on this date.';
+                timeSelect.innerHTML = `<option value="">${message}</option>`;
+                return;
             }
+
+            if (!hasSlots) {
+                const message = data && data.message ? data.message : 'All slots are booked for this date.';
+                timeSelect.innerHTML = `<option value="">${message}</option>`;
+                return;
+            }
+
+            data.slots.forEach(slot => {
+                const value = slot.time || slot;
+                const label = slot.display || slot.time || slot;
+                const remaining = typeof slot.remaining === 'number' ? ` (${slot.remaining} left)` : '';
+                timeSelect.innerHTML += `<option value="${value}">${label}${remaining}</option>`;
+            });
+
             timeSelect.disabled = false;
+        })
+        .catch(() => {
+            timeSelect.innerHTML = '<option value="">Unable to load time slots. Please try again.</option>';
         });
 });
 </script>
