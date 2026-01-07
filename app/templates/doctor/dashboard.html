@@ -100,7 +100,7 @@
         </div>
         <div class="card-body p-4">
             {% if active_notices %}
-            <div class="alert notice-preview p-4 mb-4" data-notice-rotator data-interval="7000">
+            <div class="alert notice-preview p-4 mb-4" data-notice-rotator data-interval="3500">
                 {% for notice in active_notices %}
                 <div class="d-flex align-items-start {% if not loop.first %}d-none{% endif %}" data-notice-item>
                     <div class="me-3" style="font-size: 2rem;">📣</div>
