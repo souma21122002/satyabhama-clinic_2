@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Clinic Notices{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notice-card {
+        border-radius: 16px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
+        border: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="medical-header">
+    <div class="container">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, #ffb300, #ff7043); display: flex; align-items: center; justify-content: center; border: 3px solid rgba(255,255,255,0.6);">
+                <span style="font-size: 2rem;">📣</span>
+            </div>
+            <div>
+                <h1 class="mb-1">Clinic Notices</h1>
+                <p class="mb-0 opacity-75">Important updates shared by Dr. Ajoy Kumar Singha Mahapatra</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if notices %}
+    <div class="row g-4">
+        {% for notice in notices %}
+        <div class="col-12">
+            <div class="card notice-card p-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h4 class="text-dark mb-2">{{ notice.title }}</h4>
+                        <p class="mb-0 text-muted">{{ notice.message }}</p>
+                    </div>
+                    {% if notice.display_timestamp %}
+                    <small class="text-secondary">Updated {{ notice.display_timestamp }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5 bg-light rounded">
+        <i class="bi bi-info-circle" style="font-size: 60px; color: #ff7043;"></i>
+        <p class="text-muted mt-3 mb-3">No notices are currently available.</p>
+        <a href="{{ url_for('home') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> Back to Home
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

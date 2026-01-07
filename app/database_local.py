@@ -723,21 +723,20 @@ def update_appointment_notes(appointment_id, notes):
 
 # ========== SITE NOTICE FUNCTIONS ==========
 
-def save_site_notice(title, message, doctor_id=None):
-    """Create a new active site notice"""
+def save_site_notice(title, message, doctor_id=None, is_active=True):
+    """Create a new site notice"""
     conn = get_db_connection()
     if not conn:
         return False
 
     try:
         cursor = conn.cursor()
-        cursor.execute("UPDATE site_notices SET is_active = 0")
         cursor.execute(
             """
             INSERT INTO site_notices (doctor_id, title, message, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, 1, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (doctor_id, title, message, datetime.now(), datetime.now())
+            (doctor_id, title, message, 1 if is_active else 0, datetime.now(), datetime.now())
         )
         conn.commit()
         return True
@@ -749,36 +748,86 @@ def save_site_notice(title, message, doctor_id=None):
         conn.close()
 
 
-def get_active_site_notice():
-    """Fetch the latest active notice"""
+def list_site_notices(active_only=False):
+    """Fetch site notices"""
     conn = get_db_connection()
     if not conn:
-        return None
+        return []
+
+    try:
+        cursor = conn.cursor()
+        query = """
+            SELECT id, doctor_id, title, message, is_active, created_at, updated_at
+            FROM site_notices
+        """
+        if active_only:
+            query += " WHERE is_active = 1"
+        query += " ORDER BY updated_at DESC"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        notices = []
+        for row in rows:
+            item = dict(row)
+            for ts_field in ("created_at", "updated_at"):
+                value = item.get(ts_field)
+                if isinstance(value, datetime):
+                    item[ts_field] = value.isoformat()
+            item['is_active'] = bool(item.get('is_active'))
+            notices.append(item)
+        return notices
+    except Exception as e:
+        print(f"❌ Error fetching site notices: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_active_site_notice():
+    notices = list_site_notices(active_only=True)
+    return notices[0] if notices else None
+
+
+def set_site_notice_active(notice_id, is_active):
+    """Toggle notice visibility"""
+    conn = get_db_connection()
+    if not conn:
+        return False
 
     try:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id, doctor_id, title, message, created_at, updated_at
-            FROM site_notices
-            WHERE is_active = 1
-            ORDER BY updated_at DESC
-            LIMIT 1
-            """
+            UPDATE site_notices
+            SET is_active = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (1 if is_active else 0, datetime.now(), notice_id)
         )
-        row = cursor.fetchone()
-        if not row:
-            return None
-
-        notice = dict(row)
-        for ts_field in ("created_at", "updated_at"):
-            value = notice.get(ts_field)
-            if isinstance(value, datetime):
-                notice[ts_field] = value.isoformat()
-        return notice
+        conn.commit()
+        return cursor.rowcount > 0
     except Exception as e:
-        print(f"❌ Error fetching site notice: {e}")
-        return None
+        print(f"❌ Error updating site notice: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def delete_site_notice(notice_id):
+    """Delete a site notice"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM site_notices WHERE id = ?", (notice_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        print(f"❌ Error deleting site notice: {e}")
+        conn.rollback()
+        return False
     finally:
         conn.close()
 

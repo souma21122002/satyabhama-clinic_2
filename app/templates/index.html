@@ -31,18 +31,23 @@
                 </p>
                 <p class="mb-5">AI-Powered Remedy Finder & Expert Homeopathic Consultations</p>
 
-                {% if site_notice %}
-                <div class="alert alert-warning text-start shadow-sm mx-auto mb-4" style="max-width: 720px; border-left: 6px solid #ff7043; background: rgba(255, 249, 196, 0.9);">
-                    <div class="d-flex align-items-start">
+                {% if site_notices %}
+                <div class="alert alert-warning text-start shadow-sm mx-auto mb-4" style="max-width: 720px; border-left: 6px solid #ff7043; background: rgba(255, 249, 196, 0.9);" data-notice-rotator data-interval="7000">
+                    {% for notice in site_notices %}
+                    <div class="d-flex align-items-start {% if not loop.first %}d-none{% endif %}" data-notice-item>
                         <span class="me-3" style="font-size: 2rem;">📣</span>
                         <div>
-                            <h5 class="mb-1">{{ site_notice.title }}</h5>
-                            <p class="mb-2">{{ site_notice.message }}</p>
-                            {% if site_notice.display_timestamp %}
-                            <small class="text-muted">Updated {{ site_notice.display_timestamp }}</small>
-                            {% endif %}
+                            <h5 class="mb-1">{{ notice.title }}</h5>
+                            <p class="mb-2">{{ notice.message }}</p>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                {% if notice.display_timestamp %}
+</html>
+                                {% endif %}
+                                <a href="{{ url_for('notices_page') }}" class="small text-decoration-none">View all notices &raquo;</a>
+                            </div>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
                 
@@ -351,5 +356,21 @@
         </div>
         {% endblock %}
     </div>
+
+    <script>
+    (function() {
+        const container = document.querySelector('[data-notice-rotator]');
+        if (!container) return;
+        const items = container.querySelectorAll('[data-notice-item]');
+        if (items.length <= 1) return;
+        let current = 0;
+        const interval = parseInt(container.dataset.interval || '7000', 10);
+        setInterval(() => {
+            items[current].classList.add('d-none');
+            current = (current + 1) % items.length;
+            items[current].classList.remove('d-none');
+        }, interval);
+    })();
+    </script>
 </body>
 </html>

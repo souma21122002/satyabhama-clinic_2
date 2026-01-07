@@ -559,22 +559,20 @@ def delete_doctor_availability(doctor_id, availability_date):
 
 # ========== SITE NOTICE FUNCTIONS ==========
 
-def save_site_notice(title, message, doctor_id=None):
-    """Create a new site notice and mark it active"""
+def save_site_notice(title, message, doctor_id=None, is_active=True):
+    """Create a new site notice"""
     conn = get_db_connection()
     if not conn:
         return False
 
     try:
         with conn.cursor() as cur:
-            cur.execute("UPDATE site_notices SET is_active = FALSE")
             cur.execute(
                 """
                 INSERT INTO site_notices (doctor_id, title, message, is_active, created_at, updated_at)
-                VALUES (%s, %s, %s, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                RETURNING id
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
-                (doctor_id, title, message)
+                (doctor_id, title, message, bool(is_active))
             )
             conn.commit()
             return True
@@ -586,35 +584,84 @@ def save_site_notice(title, message, doctor_id=None):
         conn.close()
 
 
-def get_active_site_notice():
-    """Fetch the latest active site notice"""
+def list_site_notices(active_only=False):
+    """Fetch site notices"""
     conn = get_db_connection()
     if not conn:
-        return None
+        return []
+
+    try:
+        with conn.cursor() as cur:
+            query = """
+                SELECT id, doctor_id, title, message, is_active, created_at, updated_at
+                FROM site_notices
+            """
+            if active_only:
+                query += " WHERE is_active = TRUE"
+            query += " ORDER BY updated_at DESC"
+            cur.execute(query)
+            rows = cur.fetchall()
+            notices = []
+            for row in rows:
+                item = dict(row)
+                for ts_field in ("created_at", "updated_at"):
+                    if isinstance(item.get(ts_field), (datetime, date)):
+                        item[ts_field] = item[ts_field].isoformat()
+                notices.append(item)
+            return notices
+    except Exception as e:
+        print(f"❌ Error fetching site notices: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_active_site_notice():
+    notices = list_site_notices(active_only=True)
+    return notices[0] if notices else None
+
+
+def set_site_notice_active(notice_id, is_active):
+    """Toggle notice visibility"""
+    conn = get_db_connection()
+    if not conn:
+        return False
 
     try:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, doctor_id, title, message, created_at, updated_at
-                FROM site_notices
-                WHERE is_active = TRUE
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """
+                UPDATE site_notices
+                SET is_active = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """,
+                (bool(is_active), notice_id)
             )
-            row = cur.fetchone()
-            if not row:
-                return None
-
-            notice = dict(row)
-            for ts_field in ("created_at", "updated_at"):
-                if isinstance(notice.get(ts_field), (datetime, date)):
-                    notice[ts_field] = notice[ts_field].isoformat()
-            return notice
+            conn.commit()
+            return cur.rowcount > 0
     except Exception as e:
-        print(f"❌ Error fetching site notice: {e}")
-        return None
+        print(f"❌ Error updating site notice: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def delete_site_notice(notice_id):
+    """Delete a site notice"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM site_notices WHERE id = %s", (notice_id,))
+            conn.commit()
+            return cur.rowcount > 0
+    except Exception as e:
+        print(f"❌ Error deleting site notice: {e}")
+        conn.rollback()
+        return False
     finally:
         conn.close()
 

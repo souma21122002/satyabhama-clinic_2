@@ -14,7 +14,8 @@ if os.getenv("FLASK_ENV") == "production":
         get_appointment, get_appointments_for_slot, get_patient_appointments,
         get_doctor_appointments, update_appointment_status, reschedule_appointment,
         update_appointment_notes, get_slot_booking_count, get_availability_for_date, delete_doctor_availability,
-        save_site_notice, get_active_site_notice, clear_site_notice
+        save_site_notice, clear_site_notice, list_site_notices,
+        set_site_notice_active, delete_site_notice
     )
 else:
     from app.database_local import (
@@ -26,7 +27,8 @@ else:
         get_appointment, get_appointments_for_slot, get_patient_appointments,
         get_doctor_appointments, update_appointment_status, reschedule_appointment,
         update_appointment_notes, get_slot_booking_count, get_availability_for_date, delete_doctor_availability,
-        save_site_notice, get_active_site_notice, clear_site_notice
+        save_site_notice, clear_site_notice, list_site_notices,
+        set_site_notice_active, delete_site_notice
     )
 
 from datetime import datetime, date, timedelta
@@ -82,7 +84,7 @@ def allowed_file(filename, allowed_set):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
 
 
-def build_notice_context(notice):
+def enrich_notice(notice):
     if not notice:
         return None
 
@@ -101,12 +103,30 @@ def build_notice_context(notice):
         display_value = parsed.strftime('%d %b %Y, %I:%M %p')
 
     enriched['display_timestamp'] = display_value
+    enriched['is_active'] = bool(enriched.get('is_active', True))
     return enriched
+
+
+def enrich_notices(notices):
+    if not notices:
+        return []
+    result = []
+    for notice in notices:
+        enriched = enrich_notice(notice)
+        if enriched:
+            result.append(enriched)
+    return result
 
 @app.route("/")
 def home():
-    notice = build_notice_context(get_active_site_notice())
-    return render_template("index.html", site_notice=notice)
+    notices = enrich_notices(list_site_notices(active_only=True))
+    return render_template("index.html", site_notices=notices)
+
+
+@app.route("/notices")
+def notices_page():
+    notices = enrich_notices(list_site_notices(active_only=True))
+    return render_template("notices.html", notices=notices)
 
 @app.route("/find-remedy", methods=["POST"])
 def find_remedy():
@@ -253,13 +273,13 @@ def patient_dashboard():
     upcoming = sorted(upcoming, key=lambda x: (x['appointment_date'], x['appointment_time']))[:5]
     past = sorted(past, key=lambda x: (x['appointment_date'], x['appointment_time']), reverse=True)[:5]
     
-    notice = build_notice_context(get_active_site_notice())
+    notices = enrich_notices(list_site_notices(active_only=True))
 
     return render_template("patient/dashboard.html", 
                           consultations=consultations,
                           upcoming_appointments=upcoming,
                           past_appointments=past,
-                          site_notice=notice)
+                          site_notices=notices)
 
 @app.route("/patient/consult", methods=["GET", "POST"])
 def patient_consult():
@@ -311,18 +331,51 @@ def doctor_dashboard():
         flash("Please login as doctor", "warning")
         return redirect(url_for("doctor_login"))
 
-    if request.method == "POST" and request.form.get("form_type") == "site_notice":
-        title = (request.form.get("notice_title") or "").strip()
-        message = (request.form.get("notice_message") or "").strip()
+    if request.method == "POST":
+        form_type = request.form.get("form_type")
 
-        if not title or not message:
-            flash("Title and message are required to publish a notice.", "danger")
-        else:
-            saved = save_site_notice(title, message, session["user"]["id"])
-            if saved:
-                flash("Notice published successfully.", "success")
+        if form_type == "site_notice":
+            title = (request.form.get("notice_title") or "").strip()
+            message = (request.form.get("notice_message") or "").strip()
+            is_active = request.form.get("notice_is_active") == "on"
+
+            if not title or not message:
+                flash("Title and message are required to publish a notice.", "danger")
             else:
-                flash("Unable to publish notice. Please try again.", "danger")
+                saved = save_site_notice(title, message, session["user"]["id"], is_active=is_active)
+                if saved:
+                    flash("Notice saved successfully.", "success")
+                else:
+                    flash("Unable to publish notice. Please try again.", "danger")
+
+        elif form_type == "toggle_notice":
+            notice_id = request.form.get("notice_id")
+            toggle_to = request.form.get("toggle_to")
+            try:
+                notice_id = int(notice_id)
+                toggle_state = toggle_to == "1"
+                if set_site_notice_active(notice_id, toggle_state):
+                    state_text = "shown" if toggle_state else "hidden"
+                    flash(f"Notice is now {state_text}.", "info")
+                else:
+                    flash("Unable to update notice visibility.", "danger")
+            except (TypeError, ValueError):
+                flash("Invalid notice reference.", "danger")
+
+        elif form_type == "delete_notice":
+            notice_id = request.form.get("notice_id")
+            try:
+                notice_id = int(notice_id)
+                if delete_site_notice(notice_id):
+                    flash("Notice deleted.", "info")
+                else:
+                    flash("Unable to delete notice.", "danger")
+            except (TypeError, ValueError):
+                flash("Invalid notice reference.", "danger")
+
+        else:
+            flash("Unsupported action.", "warning")
+
         return redirect(url_for("doctor_dashboard"))
     
     consultations = load_consultations()
@@ -350,7 +403,8 @@ def doctor_dashboard():
     # Limit to next 5 upcoming appointments
     upcoming_appointments = sorted(upcoming_appointments, key=lambda x: (x['appointment_date'], x['appointment_time']))[:5]
 
-    site_notice = build_notice_context(get_active_site_notice())
+    notices_all = enrich_notices(list_site_notices(active_only=False))
+    active_notices = [n for n in notices_all if n['is_active']]
     
     return render_template(
         "doctor/dashboard.html",
@@ -360,7 +414,8 @@ def doctor_dashboard():
         pending_count=pending_count,
         replied_count=replied_count,
         upcoming_appointments=upcoming_appointments,
-        site_notice=site_notice
+        site_notices=notices_all,
+        active_notices=active_notices
     )
 
 

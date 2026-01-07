@@ -99,50 +99,108 @@
             </div>
         </div>
         <div class="card-body p-4">
-            {% if site_notice %}
-            <div class="alert notice-preview p-4 mb-4">
-                <div class="d-flex align-items-start">
+            {% if active_notices %}
+            <div class="alert notice-preview p-4 mb-4" data-notice-rotator data-interval="7000">
+                {% for notice in active_notices %}
+                <div class="d-flex align-items-start {% if not loop.first %}d-none{% endif %}" data-notice-item>
                     <div class="me-3" style="font-size: 2rem;">📣</div>
                     <div>
-                        <h5 class="mb-2 text-dark">{{ site_notice.title }}</h5>
-                        <p class="mb-3 text-muted">{{ site_notice.message }}</p>
-                        <small class="text-secondary">
-                            Last updated: {{ site_notice.display_timestamp or 'N/A' }}
-                        </small>
+                        <h5 class="mb-2 text-dark">{{ notice.title }}</h5>
+                        <p class="mb-3 text-muted">{{ notice.message }}</p>
+                        <small class="text-secondary">Last updated: {{ notice.display_timestamp or 'N/A' }}</small>
                     </div>
                 </div>
+                {% endfor %}
             </div>
             {% else %}
             <div class="alert alert-secondary d-flex align-items-center" role="alert">
                 <i class="bi bi-info-circle me-3"></i>
-                <div>No notice published yet. Patients will not see a notice until you post one.</div>
+                <div>No active notices. Publish and mark a notice as "show" to display it to patients.</div>
             </div>
             {% endif %}
 
-            <form id="noticePublishForm" method="POST" action="{{ url_for('doctor_dashboard') }}" class="row g-3">
+            <form method="POST" action="{{ url_for('doctor_dashboard') }}" class="row g-3">
                 <input type="hidden" name="form_type" value="site_notice">
-                <div class="col-12">
+                <div class="col-12 col-lg-6">
                     <label class="form-label fw-semibold">Notice Title</label>
-                    <input type="text" name="notice_title" class="form-control" placeholder="e.g. Clinic closed on Sunday" value="{{ site_notice.title if site_notice else '' }}" maxlength="120" required>
+                    <input type="text" name="notice_title" class="form-control" placeholder="e.g. Clinic closed on Sunday" maxlength="120" required>
+                </div>
+                <div class="col-12 col-lg-6">
+                    <label class="form-label fw-semibold">Show Immediately</label>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" role="switch" id="notice_is_active" name="notice_is_active" checked>
+                        <label class="form-check-label" for="notice_is_active">Visible to patients once published</label>
+                    </div>
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-semibold">Notice Message</label>
-                    <textarea name="notice_message" class="form-control" rows="4" placeholder="Write the detailed notice for patients..." required>{{ site_notice.message if site_notice else '' }}</textarea>
+                    <textarea name="notice_message" class="form-control" rows="4" placeholder="Write the detailed notice for patients..." required></textarea>
                     <small class="text-muted">Keep the message short and patient-friendly. Markdown is not supported.</small>
                 </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-warning text-dark">
+                        <i class="bi bi-megaphone me-1"></i> Publish Notice
+                    </button>
+                </div>
             </form>
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <button type="submit" form="noticePublishForm" class="btn btn-warning text-dark">
-                    <i class="bi bi-megaphone me-1"></i> Publish Notice
+
+            {% if active_notices %}
+            <form method="POST" action="{{ url_for('doctor_clear_notice') }}" class="mt-2">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-slash-circle"></i> Hide All Notices
                 </button>
-                {% if site_notice %}
-                <button type="submit" form="clearNoticeForm" class="btn btn-outline-secondary">
-                    <i class="bi bi-trash"></i> Clear Notice
-                </button>
-                {% endif %}
+            </form>
+            {% endif %}
+
+            {% if site_notices %}
+            <div class="table-responsive mt-4">
+                <table class="table align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Title</th>
+                            <th scope="col">Message</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Updated</th>
+                            <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notice in site_notices %}
+                        <tr>
+                            <td class="fw-semibold">{{ notice.title }}</td>
+                            <td class="text-muted">{{ notice.message }}</td>
+                            <td>
+                                {% if notice.is_active %}
+                                <span class="badge bg-success">Showing</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Hidden</span>
+                                {% endif %}
+                            </td>
+                            <td><small class="text-muted">{{ notice.display_timestamp or 'N/A' }}</small></td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-2">
+                                    <form method="POST" action="{{ url_for('doctor_dashboard') }}">
+                                        <input type="hidden" name="form_type" value="toggle_notice">
+                                        <input type="hidden" name="notice_id" value="{{ notice.id }}">
+                                        <input type="hidden" name="toggle_to" value="{{ 0 if notice.is_active else 1 }}">
+                                        <button type="submit" class="btn btn-sm {% if notice.is_active %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">
+                                            {% if notice.is_active %}<i class="bi bi-eye-slash"></i> Hide{% else %}<i class="bi bi-eye"></i> Show{% endif %}
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('doctor_dashboard') }}" onsubmit="return confirm('Delete this notice?');">
+                                        <input type="hidden" name="form_type" value="delete_notice">
+                                        <input type="hidden" name="notice_id" value="{{ notice.id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            {% if site_notice %}
-            <form id="clearNoticeForm" method="POST" action="{{ url_for('doctor_clear_notice') }}"></form>
             {% endif %}
         </div>
     </div>
@@ -469,6 +527,21 @@
 </div>
 
 <script>
+// Rotate notices in preview for doctor view
+(function() {
+    const container = document.querySelector('[data-notice-rotator]');
+    if (!container) return;
+    const items = container.querySelectorAll('[data-notice-item]');
+    if (items.length <= 1) return;
+    let current = 0;
+    const interval = parseInt(container.dataset.interval || '7000', 10);
+    setInterval(() => {
+        items[current].classList.add('d-none');
+        current = (current + 1) % items.length;
+        items[current].classList.remove('d-none');
+    }, interval);
+})();
+
 function completeAppointment(id) {
     document.getElementById('completeForm').action = `/doctor/complete-appointment/${id}`;
     new bootstrap.Modal(document.getElementById('completeModal')).show();
