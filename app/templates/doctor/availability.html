@@ -4,336 +4,740 @@
 
 {% block extra_css %}
 <style>
-    .date-card {
-        border: 2px solid #e0e0e0;
-        border-radius: 15px;
-        padding: 20px;
-        margin-bottom: 15px;
-        transition: all 0.3s;
+    .session-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.95rem;
     }
-    .date-card:hover {
-        border-color: #667eea;
-        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
-    }
+
     .slot-checkbox {
         display: none;
     }
+
     .slot-label {
         display: inline-block;
-        padding: 10px 20px;
-        margin: 5px;
+        padding: 10px 16px;
+        margin: 4px 8px 4px 0;
         border: 2px solid #e0e0e0;
-        border-radius: 10px;
+        border-radius: 12px;
         cursor: pointer;
-        transition: all 0.3s;
+        font-weight: 600;
+        color: #495057;
         min-width: 100px;
         text-align: center;
+        transition: all 0.2s;
     }
+
     .slot-label:hover {
         border-color: #667eea;
-        background: rgba(102, 126, 234, 0.1);
+        background: rgba(102, 126, 234, 0.12);
     }
+
     .slot-checkbox:checked + .slot-label {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
         border-color: #667eea;
-    }
-    .session-title {
         background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 8px 20px;
-        border-radius: 20px;
-        display: inline-block;
-        margin-bottom: 15px;
-        font-weight: 600;
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(102, 126, 234, 0.25);
     }
-    .availability-list .badge {
-        font-size: 12px;
+
+    .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #667eea;
+        text-align: center;
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+    }
+
+    .calendar-day {
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        min-height: 92px;
+        padding: 8px;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .calendar-day button {
+        all: unset;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .calendar-day:hover {
+        border-color: #667eea;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.18);
+        transform: translateY(-2px);
+    }
+
+    .calendar-day.placeholder,
+    .calendar-day.placeholder:hover {
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        transform: none;
+        cursor: default;
+    }
+
+    .calendar-date {
+        font-weight: 700;
+        color: #2d2d2d;
+        font-size: 1rem;
+    }
+
+    .calendar-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+
+    .calendar-today-tag {
+        position: absolute;
+        bottom: 6px;
+        left: 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #0d6efd;
+    }
+
+    .calendar-day.status-available { border-left: 4px solid #198754; }
+    .calendar-day.status-partial { border-left: 4px solid #fd7e14; }
+    .calendar-day.status-full { border-left: 4px solid #dc3545; }
+    .calendar-day.status-off {
+        border-left: 4px solid #6c757d;
+        background: linear-gradient(135deg, rgba(108,117,125,0.08), rgba(108,117,125,0.03));
+    }
+    .calendar-day.status-clear,
+    .calendar-day.status-unset {
+        border-left: 4px solid #adb5bd;
+    }
+
+    .calendar-day.selected {
+        border: 2px solid #764ba2;
+        box-shadow: 0 0 0 4px rgba(118, 75, 162, 0.15);
+    }
+
+    .legend-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         padding: 5px 10px;
-        margin: 2px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        border: 1px solid transparent;
+    }
+
+    .legend-chip.status-available { background: rgba(25, 135, 84, 0.12); border-color: rgba(25,135,84,0.3); color: #198754; }
+    .legend-chip.status-partial { background: rgba(253, 126, 20, 0.12); border-color: rgba(253,126,20,0.3); color: #fd7e14; }
+    .legend-chip.status-full { background: rgba(220, 53, 69, 0.12); border-color: rgba(220,53,69,0.3); color: #dc3545; }
+    .legend-chip.status-off { background: rgba(108,117,125,0.12); border-color: rgba(108,117,125,0.3); color: #6c757d; }
+    .legend-chip.status-unset { background: rgba(102, 126, 234, 0.08); border-color: rgba(102,126,234,0.25); color: #495057; }
+
+    .slot-pill {
+        border-radius: 12px;
+        padding: 10px 12px;
+        border: 1px solid #e2e6ea;
+        margin-bottom: 8px;
+    }
+
+    .slot-time {
+        font-weight: 600;
+        color: #343a40;
+    }
+
+    .slot-note {
+        font-size: 0.8rem;
+        color: #6c757d;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="medical-header">
-    <div class="container">
-        <h1>📅 Set Your Availability</h1>
-        <p class="mb-0 opacity-75">Select dates and time slots when you're available</p>
-    </div>
-</div>
-
-<div class="container">
-    <!-- Debug Info -->
-    {% if availabilities %}
-    <div class="alert alert-info mb-3">
-        <i class="bi bi-info-circle me-2"></i>
-        <strong>Debug:</strong> Found {{ availabilities|length }} scheduled date(s)
-    </div>
-    {% endif %}
-    
-    <div class="row">
-        <!-- Set Availability Form -->
+<div class="container py-4">
+    <div class="row g-4 align-items-stretch">
         <div class="col-lg-7">
-            <div class="card shadow" style="border-radius: 20px;">
+            <div class="card shadow h-100" style="border-radius: 20px;">
                 <div class="card-header text-white" style="background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 20px 20px 0 0;">
                     <h5 class="mb-0"><i class="bi bi-calendar-plus me-2"></i>Set Availability for a Date</h5>
                 </div>
                 <div class="card-body p-4">
                     <form method="POST" id="availabilityForm">
+                        <input type="hidden" name="form_action" id="formActionInput" value="save">
+                        <input type="hidden" name="off_day_reason" id="offDayReasonInput">
+
                         <div class="mb-4">
                             <label class="form-label fw-bold"><i class="bi bi-calendar3 me-2"></i>Select Date</label>
-                            <input type="date" class="form-control form-control-lg" id="availability_date" 
-                                   name="availability_date" required>
+                            <input type="date" class="form-control form-control-lg" id="availability_date" name="availability_date" required>
                             <small class="text-muted">Select a future date to set your availability</small>
                         </div>
-                        
-                        <div id="slotsSection">
-                            <!-- Morning Slots -->
-                            <div class="mb-4">
-                                <span class="session-title"><i class="bi bi-brightness-high me-2"></i>Morning (9 AM - 1 PM)</span>
-                                <div class="d-flex flex-wrap">
-                                    {% for slot in morning_slots %}
-                                    <div>
-                                        <input type="checkbox" class="slot-checkbox" id="slot_{{ slot.replace(':', '') }}" 
-                                               name="slot_{{ slot.replace(':', '') }}" value="1">
-                                        <label class="slot-label" for="slot_{{ slot.replace(':', '') }}">
-                                            {% set hour = slot.split(':')[0]|int %}
-                                            {{ hour if hour <= 12 else hour - 12 }}:00 {{ 'AM' if hour < 12 else 'PM' }}
-                                        </label>
-                                    </div>
-                                    {% endfor %}
+
+                        <div class="mb-4">
+                            <span class="session-title"><i class="bi bi-brightness-high"></i>Morning (9 AM - 1 PM)</span>
+                            <div class="d-flex flex-wrap mt-2">
+                                {% for slot in morning_slots %}
+                                <div>
+                                    <input type="checkbox" class="slot-checkbox" id="slot_{{ slot.replace(':', '') }}" name="slot_{{ slot.replace(':', '') }}" value="1">
+                                    <label class="slot-label" for="slot_{{ slot.replace(':', '') }}">
+                                        {% set hour = slot.split(':')[0]|int %}
+                                        {{ hour if hour <= 12 else hour - 12 }}:00 {{ 'AM' if hour < 12 else 'PM' }}
+                                    </label>
                                 </div>
-                            </div>
-                            
-                            <!-- Evening Slots -->
-                            <div class="mb-4">
-                                <span class="session-title"><i class="bi bi-moon-stars me-2"></i>Evening (6 PM - 10 PM)</span>
-                                <div class="d-flex flex-wrap">
-                                    {% for slot in evening_slots %}
-                                    <div>
-                                        <input type="checkbox" class="slot-checkbox" id="slot_{{ slot.replace(':', '') }}" 
-                                               name="slot_{{ slot.replace(':', '') }}" value="1">
-                                        <label class="slot-label" for="slot_{{ slot.replace(':', '') }}">
-                                            {% set hour = slot.split(':')[0]|int %}
-                                            {{ hour - 12 }}:00 PM
-                                        </label>
-                                    </div>
-                                    {% endfor %}
-                                </div>
+                                {% endfor %}
                             </div>
                         </div>
-                        
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-secondary" onclick="selectAll()">
+
+                        <div class="mb-4">
+                            <span class="session-title"><i class="bi bi-moon-stars"></i>Evening (6 PM - 10 PM)</span>
+                            <div class="d-flex flex-wrap mt-2">
+                                {% for slot in evening_slots %}
+                                <div>
+                                    <input type="checkbox" class="slot-checkbox" id="slot_{{ slot.replace(':', '') }}" name="slot_{{ slot.replace(':', '') }}" value="1">
+                                    <label class="slot-label" for="slot_{{ slot.replace(':', '') }}">
+                                        {% set hour = slot.split(':')[0]|int %}
+                                        {{ hour - 12 }}:00 PM
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-secondary" data-action="select-all">
                                 <i class="bi bi-check-all me-2"></i>Select All
                             </button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="clearAll()">
+                            <button type="button" class="btn btn-outline-secondary" data-action="clear-all">
                                 <i class="bi bi-x-circle me-2"></i>Clear All
                             </button>
-                            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                            <button type="submit" class="btn btn-primary flex-grow-1">
                                 <i class="bi bi-save me-2"></i>Save Availability
                             </button>
+                            <button type="button" class="btn btn-outline-danger" data-action="off-day">
+                                <i class="bi bi-slash-circle me-2"></i>Make It Off Day
+                            </button>
+                            <button type="button" class="btn btn-outline-dark" data-action="clear-day">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i>Clear Day
+                            </button>
                         </div>
-                        
+
                         <div class="alert alert-info mt-3 mb-0">
                             <i class="bi bi-info-circle me-2"></i>
-                            <strong>Tip:</strong> If you don't select any slots, the date will be marked as OFF day.
+                            <strong>Tip:</strong> Saving with no slots keeps the date open. Use "Make It Off Day" to block bookings explicitly.
                         </div>
                     </form>
                 </div>
             </div>
         </div>
-        
-        <!-- Upcoming Availability (Next 5 including today) -->
+
         <div class="col-lg-5">
-            <div class="card shadow" style="border-radius: 20px;">
+            <div class="card shadow h-100" style="border-radius: 20px;">
                 <div class="card-header bg-success text-white" style="border-radius: 20px 20px 0 0;">
-                    <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Your Scheduled Availability (Next 5 Days)</h5>
-                </div>
-                <div class="card-body p-4 availability-list" style="max-height: 600px; overflow-y: auto;">
-                    {% if availabilities and availabilities|length > 0 %}
-                        <!-- Debug: Show raw data -->
-                        <div class="alert alert-warning mb-3">
-                            <small><strong>Debug Data:</strong> {{ availabilities|length }} entries found</small>
-                        </div>
-                        
-                        {% for avail in availabilities[:5] %}
-                        <div class="date-card">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-2 text-primary">
-                                        <i class="bi bi-calendar-event me-2"></i>
-                                        {{ avail.availability_date }}
-                                        {% if loop.index == 1 %}
-                                        <span class="badge bg-info ms-2">Next</span>
-                                        {% endif %}
-                                    </h6>
-                                    
-                                    <!-- Debug: Show slot values -->
-                                    <div class="small text-muted mb-2">
-                                        <details>
-                                            <summary>Debug Slot Values</summary>
-                                            <pre style="font-size: 10px;">
-slot_09: {{ avail.slot_09 }} ({{ avail.slot_09|int }})
-slot_10: {{ avail.slot_10 }} ({{ avail.slot_10|int }})
-slot_11: {{ avail.slot_11 }} ({{ avail.slot_11|int }})
-slot_12: {{ avail.slot_12 }} ({{ avail.slot_12|int }})
-slot_13: {{ avail.slot_13 }} ({{ avail.slot_13|int }})
-slot_18: {{ avail.slot_18 }} ({{ avail.slot_18|int }})
-slot_19: {{ avail.slot_19 }} ({{ avail.slot_19|int }})
-slot_20: {{ avail.slot_20 }} ({{ avail.slot_20|int }})
-slot_21: {{ avail.slot_21 }} ({{ avail.slot_21|int }})
-slot_22: {{ avail.slot_22 }} ({{ avail.slot_22|int }})
-                                            </pre>
-                                        </details>
-                                    </div>
-                                    
-                                    <div>
-                                        {% set has_slots = false %}
-                                        
-                                        {% if avail.slot_09|int == 1 or avail.slot_09 %}
-                                            <span class="badge bg-primary">9 AM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_10|int == 1 or avail.slot_10 %}
-                                            <span class="badge bg-primary">10 AM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_11|int == 1 or avail.slot_11 %}
-                                            <span class="badge bg-primary">11 AM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_12|int == 1 or avail.slot_12 %}
-                                            <span class="badge bg-primary">12 PM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_13|int == 1 or avail.slot_13 %}
-                                            <span class="badge bg-primary">1 PM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_18|int == 1 or avail.slot_18 %}
-                                            <span class="badge bg-info">6 PM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_19|int == 1 or avail.slot_19 %}
-                                            <span class="badge bg-info">7 PM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_20|int == 1 or avail.slot_20 %}
-                                            <span class="badge bg-info">8 PM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_21|int == 1 or avail.slot_21 %}
-                                            <span class="badge bg-info">9 PM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        {% if avail.slot_22|int == 1 or avail.slot_22 %}
-                                            <span class="badge bg-info">10 PM</span>
-                                            {% set has_slots = true %}
-                                        {% endif %}
-                                        
-                                        {% if not has_slots %}
-                                            <span class="badge bg-danger">ERROR: No slots showing but data exists</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <button class="btn btn-sm btn-outline-primary" type="button"
-                                        onclick="loadDate('{{ avail.availability_date }}')">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        
-                        {% if availabilities|length > 5 %}
-                        <div class="text-center text-muted mt-3">
-                            <small>Showing next 5 days. You have {{ availabilities|length }} total scheduled dates.</small>
-                        </div>
-                        {% endif %}
-                    {% else %}
-                    <div class="text-center py-4">
-                        <i class="bi bi-calendar-x" style="font-size: 50px; color: #ccc;"></i>
-                        <p class="text-muted mt-3 mb-2">No availability set yet.</p>
-                        <p class="small text-muted">Select a date and time slots above to get started.</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-light btn-sm" type="button" data-calendar-nav="prev">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <div class="fw-semibold" data-calendar-month>Loading...</div>
+                        <button class="btn btn-light btn-sm" type="button" data-calendar-nav="next">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
                     </div>
-                    {% endif %}
+                </div>
+                <div class="card-body p-4">
+                    <div class="calendar-weekdays">
+                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+                    <div class="calendar-grid" data-calendar-grid></div>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <span class="legend-chip status-available"><span class="rounded-circle" style="width:10px;height:10px;background:#198754;display:inline-block;"></span>Available</span>
+                        <span class="legend-chip status-partial"><span class="rounded-circle" style="width:10px;height:10px;background:#fd7e14;display:inline-block;"></span>Partially booked</span>
+                        <span class="legend-chip status-full"><span class="rounded-circle" style="width:10px;height:10px;background:#dc3545;display:inline-block;"></span>Full</span>
+                        <span class="legend-chip status-off"><span class="rounded-circle" style="width:10px;height:10px;background:#6c757d;display:inline-block;"></span>Off day</span>
+                        <span class="legend-chip status-unset"><span class="rounded-circle" style="width:10px;height:10px;background:#adb5bd;display:inline-block;"></span>Not set</span>
+                    </div>
                 </div>
             </div>
-            
+
+            <div class="card mt-3 shadow" style="border-radius: 20px;">
+                <div class="card-header bg-primary text-white" style="border-radius: 20px 20px 0 0;">
+                    <h6 class="mb-0"><i class="bi bi-search me-2"></i>Selected Date Overview</h6>
+                </div>
+                <div class="card-body" data-date-details>
+                    <p class="text-muted mb-0">Select a date to review configured slots and bookings.</p>
+                </div>
+            </div>
+
             <div class="card mt-3" style="border-radius: 15px;">
                 <div class="card-body">
-                    <h6 class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Important</h6>
+                    <h6 class="text-warning"><i class="bi bi-lightbulb me-2"></i>Quick tips</h6>
                     <ul class="small text-muted mb-0">
-                        <li>Only dates with availability set will be bookable by patients</li>
-                        <li>Each slot can have up to 15 patients</li>
-                        <li>Showing your next 5 scheduled dates</li>
-                        <li>You can edit availability anytime</li>
+                        <li>Click any date to edit slots or mark it as an off day.</li>
+                        <li>Use "Clear Day" to remove all slots and reopen booking.</li>
+                        <li>Patients only see the slots you enable here.</li>
                     </ul>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
-const dateInput = document.getElementById('availability_date');
-const today = new Date().toISOString().split('T')[0];
-dateInput.min = today;
+document.addEventListener('DOMContentLoaded', function() {
+    const availabilityForm = document.getElementById('availabilityForm');
+    const dateInput = document.getElementById('availability_date');
+    const formActionInput = document.getElementById('formActionInput');
+    const offDayReasonInput = document.getElementById('offDayReasonInput');
+    const calendarGrid = document.querySelector('[data-calendar-grid]');
+    const calendarMonthLabel = document.querySelector('[data-calendar-month]');
+    const detailsContainer = document.querySelector('[data-date-details]');
+    const calendarNavButtons = document.querySelectorAll('[data-calendar-nav]');
+    const actionButtons = {
+        selectAll: document.querySelector('[data-action="select-all"]'),
+        clearAll: document.querySelector('[data-action="clear-all"]'),
+        offDay: document.querySelector('[data-action="off-day"]'),
+        clearDay: document.querySelector('[data-action="clear-day"]')
+    };
 
-dateInput.addEventListener('change', function() {
-    loadDate(this.value);
-});
+    const indiaDisplayFormatter = new Intl.DateTimeFormat('en-IN', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Asia/Kolkata'
+    });
 
-function loadDate(dateStr) {
-    console.log('loadDate called with:', dateStr);
-    dateInput.value = dateStr;
-    
-    // Scroll to the form
-    document.querySelector('[style*="background: linear-gradient"]').closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    
-    console.log('Loading availability for:', dateStr);
-    
-    fetch(`/api/doctor/availability/${dateStr}`)
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    const indiaIsoFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata'
+    });
+
+    if (dateInput) {
+        dateInput.min = indiaIsoFormatter.format(new Date());
+    }
+
+    let calendarSummary = null;
+    let currentMonth = null;
+    let selectedDate = null;
+    let indiaTodayISO = null;
+    let todayWatcherStarted = false;
+
+    if (availabilityForm) {
+        availabilityForm.addEventListener('submit', () => {
+            if (!formActionInput.value) {
+                formActionInput.value = 'save';
             }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Received data:', data);
-            
-            // Clear all checkboxes first
-            document.querySelectorAll('.slot-checkbox').forEach(cb => cb.checked = false);
-            
-            if (data.exists && data.slots) {
-                Object.entries(data.slots).forEach(([time, enabled]) => {
-                    const id = 'slot_' + time.replace(':', '');
-                    const cb = document.getElementById(id);
-                    console.log(`  ${time}: ${enabled} (checkbox: ${id}, found: ${!!cb})`);
-                    if (cb && (enabled === 1 || enabled === true || enabled === '1')) {
-                        cb.checked = true;
-                    }
-                });
-                console.log('✓ Successfully loaded slots for', dateStr);
-            } else {
-                console.log('No availability data for this date');
-            }
-        })
-        .catch(err => {
-            console.error('Error loading availability:', err);
-            alert('Error loading availability. Check browser console for details.');
         });
-}
+    }
 
-function selectAll() {
-    document.querySelectorAll('.slot-checkbox').forEach(cb => cb.checked = true);
-}
+    if (dateInput) {
+        dateInput.addEventListener('change', (event) => {
+            const value = event.target.value;
+            if (!value) {
+                return;
+            }
+            selectedDate = value;
+            updateCalendarSelection();
+            loadDate(value, calendarSummary?.days?.[value]);
+        });
+    }
 
-function clearAll() {
-    document.querySelectorAll('.slot-checkbox').forEach(cb => cb.checked = false);
-}
+    if (actionButtons.selectAll) {
+        actionButtons.selectAll.addEventListener('click', () => updateSlotCheckboxes(true));
+    }
+    if (actionButtons.clearAll) {
+        actionButtons.clearAll.addEventListener('click', () => updateSlotCheckboxes(false));
+    }
+    if (actionButtons.offDay) {
+        actionButtons.offDay.addEventListener('click', () => {
+            if (!dateInput.value) {
+                alert('Select a date before marking it as an off day.');
+                return;
+            }
+            const note = prompt('Optional note for this off day (leave blank to skip):', offDayReasonInput.value || '');
+            if (note === null) {
+                return;
+            }
+            offDayReasonInput.value = note.trim();
+            setFormAction('off_day');
+            availabilityForm.requestSubmit();
+        });
+    }
+    if (actionButtons.clearDay) {
+        actionButtons.clearDay.addEventListener('click', () => {
+            if (!dateInput.value) {
+                alert('Select a date to clear.');
+                return;
+            }
+            if (!confirm(`Clear all slots for ${dateInput.value}?`)) {
+                return;
+            }
+            offDayReasonInput.value = '';
+            setFormAction('clear_day');
+            availabilityForm.requestSubmit();
+        });
+    }
+
+    calendarNavButtons.forEach((button) => {
+        button.addEventListener('click', () => handleCalendarNav(button.getAttribute('data-calendar-nav')));
+    });
+
+    function setFormAction(action) {
+        formActionInput.value = action;
+    }
+
+    function updateSlotCheckboxes(checked) {
+        document.querySelectorAll('.slot-checkbox').forEach((cb) => {
+            cb.checked = checked;
+        });
+    }
+
+    function setSlotInputsDisabled(disabled) {
+        document.querySelectorAll('.slot-checkbox').forEach((cb) => {
+            cb.disabled = disabled;
+            const label = document.querySelector(`label[for="${cb.id}"]`);
+            if (label) {
+                label.classList.toggle('text-muted', disabled);
+            }
+        });
+    }
+
+    function updateActionButtons(detail) {
+        const hasDate = Boolean(dateInput.value);
+        if (actionButtons.offDay) {
+            actionButtons.offDay.disabled = !hasDate || Boolean(detail?.is_off_day);
+        }
+        if (actionButtons.clearDay) {
+            actionButtons.clearDay.disabled = !hasDate;
+        }
+    }
+
+    function handleCalendarNav(direction) {
+        if (!calendarSummary || !calendarSummary.navigation) {
+            return;
+        }
+        const target = calendarSummary.navigation[direction];
+        if (target) {
+            fetchCalendar(target);
+        }
+    }
+
+    function fetchCalendar(month) {
+        const url = month ? `/api/doctor/availability-summary?month=${month}` : '/api/doctor/availability-summary';
+        fetch(url)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Unable to load calendar data');
+                }
+                return response.json();
+            })
+            .then((data) => {
+                renderCalendar(data);
+                maybeStartTodayWatcher();
+            })
+            .catch((error) => {
+                console.error(error);
+                alert('Unable to load calendar data.');
+            });
+    }
+
+    function renderCalendar(data) {
+        calendarSummary = data;
+        currentMonth = data.month;
+        indiaTodayISO = data.today;
+
+        if (calendarMonthLabel) {
+            calendarMonthLabel.textContent = data.month_label;
+        }
+        if (calendarGrid) {
+            calendarGrid.innerHTML = '';
+            const [year, month] = data.month.split('-').map(Number);
+            const firstWeekday = new Date(year, month - 1, 1).getDay();
+            const totalDays = new Date(year, month, 0).getDate();
+
+            for (let i = 0; i < firstWeekday; i += 1) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'calendar-day placeholder';
+                calendarGrid.appendChild(placeholder);
+            }
+
+            for (let day = 1; day <= totalDays; day += 1) {
+                const dateStr = `${data.month}-${String(day).padStart(2, '0')}`;
+                const cell = createCalendarCell(dateStr, day, data.days?.[dateStr]);
+                calendarGrid.appendChild(cell);
+            }
+        }
+
+        let targetDate = selectedDate;
+        if (!targetDate || targetDate.slice(0, 7) !== data.month) {
+            if (indiaTodayISO && indiaTodayISO.slice(0, 7) === data.month) {
+                targetDate = indiaTodayISO;
+            } else {
+                const dayKeys = Object.keys(data.days || {}).sort();
+                targetDate = dayKeys[0] || `${data.month}-01`;
+            }
+        }
+
+        selectedDate = targetDate;
+        if (dateInput) {
+            dateInput.value = targetDate;
+        }
+        updateCalendarSelection();
+        loadDate(targetDate, data.days?.[targetDate]);
+    }
+
+    const STATUS_CLASS = {
+        available: 'status-available',
+        partial: 'status-partial',
+        full: 'status-full',
+        off: 'status-off',
+        clear: 'status-clear',
+        unset: 'status-unset'
+    };
+
+    function createCalendarCell(dateStr, dayNumber, summary) {
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('calendar-day');
+        wrapper.setAttribute('data-calendar-day', dateStr);
+
+        const status = summary ? summary.status : 'unset';
+        wrapper.classList.add(STATUS_CLASS[status] || STATUS_CLASS.unset);
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.addEventListener('click', () => handleCalendarDate(dateStr));
+
+        const numberEl = document.createElement('div');
+        numberEl.className = 'calendar-date';
+        numberEl.textContent = dayNumber;
+        button.appendChild(numberEl);
+
+        const metaEl = document.createElement('div');
+        metaEl.className = 'calendar-meta';
+        metaEl.textContent = calendarMetaText(summary, status);
+        button.appendChild(metaEl);
+
+        wrapper.appendChild(button);
+
+        if (dateStr === indiaTodayISO) {
+            const todayTag = document.createElement('div');
+            todayTag.className = 'calendar-today-tag';
+            todayTag.textContent = 'Today';
+            wrapper.appendChild(todayTag);
+        }
+
+        return wrapper;
+    }
+
+    function calendarMetaText(summary, status) {
+        if (!summary) {
+            return 'Not set';
+        }
+        if (summary.is_off_day) {
+            return 'Off day';
+        }
+        if (status === 'full') {
+            return 'Fully booked';
+        }
+        const slotCount = Array.isArray(summary.enabled_slots)
+            ? summary.enabled_slots.length
+            : Number(summary.enabled_slots) || 0;
+        if (status === 'available') {
+            return `${slotCount} slots`;
+        }
+        if (status === 'partial') {
+            return `${summary.booked}/${summary.capacity} booked`;
+        }
+        if (status === 'clear') {
+            return 'No slots';
+        }
+        return 'Not set';
+    }
+
+    function handleCalendarDate(dateStr) {
+        selectedDate = dateStr;
+        updateCalendarSelection();
+        if (dateInput) {
+            dateInput.value = dateStr;
+        }
+        loadDate(dateStr, calendarSummary?.days?.[dateStr]);
+    }
+
+    function updateCalendarSelection() {
+        document.querySelectorAll('[data-calendar-day]').forEach((el) => {
+            if (selectedDate && el.getAttribute('data-calendar-day') === selectedDate) {
+                el.classList.add('selected');
+            } else {
+                el.classList.remove('selected');
+            }
+        });
+    }
+
+    function loadDate(dateStr, summaryDay) {
+        if (!dateStr) {
+            return;
+        }
+
+        setFormAction('save');
+        if (offDayReasonInput) {
+            offDayReasonInput.value = '';
+        }
+        updateSlotCheckboxes(false);
+        setSlotInputsDisabled(false);
+        updateActionButtons(null);
+
+        if (availabilityForm) {
+            availabilityForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        fetch(`/api/doctor/availability/${dateStr}`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Unable to load availability for the date');
+                }
+                return response.json();
+            })
+            .then((data) => {
+                if (data.exists && data.slots) {
+                    Object.entries(data.slots).forEach(([time, enabled]) => {
+                        const checkbox = document.getElementById(`slot_${time.replace(':', '')}`);
+                        if (checkbox) {
+                            checkbox.checked = enabled === 1 || enabled === true || enabled === '1';
+                        }
+                    });
+                }
+                if (data.is_off_day) {
+                    setSlotInputsDisabled(true);
+                }
+                if (offDayReasonInput) {
+                    offDayReasonInput.value = data.off_day_reason || '';
+                }
+                updateActionButtons(data);
+                renderDateDetails(dateStr, data, summaryDay);
+            })
+            .catch((error) => {
+                console.error(error);
+                alert('Unable to load availability for the selected date.');
+                updateActionButtons(null);
+                renderDateDetails(dateStr, null, summaryDay);
+            });
+    }
+
+    function renderDateDetails(dateStr, apiData, summaryDay) {
+        if (!detailsContainer) {
+            return;
+        }
+
+        const dateLabel = indiaDisplayFormatter.format(new Date(`${dateStr}T00:00:00`));
+        detailsContainer.innerHTML = '';
+
+        const heading = document.createElement('h5');
+        heading.className = 'fw-semibold';
+        heading.textContent = dateLabel;
+        detailsContainer.appendChild(heading);
+
+        if (!apiData || (!apiData.exists && !apiData.is_off_day)) {
+            const info = document.createElement('p');
+            info.className = 'text-muted';
+            info.textContent = 'No availability configured yet.';
+            detailsContainer.appendChild(info);
+        }
+
+        if (apiData?.is_off_day) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-secondary';
+            alert.innerHTML = `<i class="bi bi-slash-circle me-2"></i>This date is marked as an off day${apiData.off_day_reason ? `: ${apiData.off_day_reason}` : ''}.`;
+            detailsContainer.appendChild(alert);
+        }
+
+        if (apiData?.slots) {
+            const slotWrapper = document.createElement('div');
+            slotWrapper.className = 'mt-3';
+
+            Object.entries(apiData.slots).forEach(([time, enabled]) => {
+                const slotPill = document.createElement('div');
+                slotPill.className = 'slot-pill d-flex justify-content-between align-items-center';
+
+                const timeEl = document.createElement('div');
+                timeEl.className = 'slot-time';
+                timeEl.textContent = formatDisplayTime(time);
+                slotPill.appendChild(timeEl);
+
+                const statusEl = document.createElement('div');
+                statusEl.className = `badge ${enabled ? 'bg-success' : 'bg-light text-muted border'}`;
+                statusEl.textContent = enabled ? 'Enabled' : 'Disabled';
+                slotPill.appendChild(statusEl);
+
+                if (summaryDay?.booked_slots?.[time]) {
+                    const note = document.createElement('div');
+                    note.className = 'slot-note text-muted';
+                    note.textContent = `${summaryDay.booked_slots[time]} booked`;
+                    slotPill.appendChild(note);
+                }
+
+                slotWrapper.appendChild(slotPill);
+            });
+
+            detailsContainer.appendChild(slotWrapper);
+        }
+
+        if (summaryDay && typeof summaryDay.booked === 'number') {
+            const stat = document.createElement('div');
+            stat.className = 'alert alert-info mt-3 mb-0';
+            stat.innerHTML = `<i class="bi bi-people me-2"></i>${summaryDay.booked} appointment(s) booked out of ${summaryDay.capacity || 'configured'} slots.`;
+            detailsContainer.appendChild(stat);
+        }
+    }
+
+    function formatDisplayTime(time) {
+        const [hourStr, minuteStr] = time.split(':');
+        let hour = Number(hourStr);
+        const minute = Number(minuteStr) || 0;
+        const suffix = hour >= 12 ? 'PM' : 'AM';
+        if (hour === 0) {
+            hour = 12;
+        } else if (hour > 12) {
+            hour -= 12;
+        }
+        return `${hour}:${String(minute).padStart(2, '0')} ${suffix}`;
+    }
+
+    function maybeStartTodayWatcher() {
+        if (todayWatcherStarted) {
+            return;
+        }
+        todayWatcherStarted = true;
+        setInterval(() => refreshToday(), 10 * 60 * 1000);
+    }
+
+    function refreshToday() {
+        const now = new Date();
+        const currentIso = indiaIsoFormatter.format(now);
+        if (currentIso !== indiaTodayISO) {
+            fetchCalendar(currentMonth || undefined);
+        }
+    }
+
+    fetchCalendar();
+});
 </script>
 {% endblock %}

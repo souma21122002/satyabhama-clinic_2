@@ -15,6 +15,40 @@ def get_db_connection():
         print(f"Database connection error: {e}")
         return None
 
+
+def get_slot_bookings_for_range(doctor_id, start_date, end_date):
+    """Return scheduled booking counts per slot within a range"""
+    conn = get_db_connection()
+    if not conn:
+        return {}
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT appointment_date, appointment_time, COUNT(*) as count
+            FROM appointments
+            WHERE doctor_id = ?
+              AND appointment_date BETWEEN ? AND ?
+              AND status = 'scheduled'
+            GROUP BY appointment_date, appointment_time
+            """,
+            (doctor_id, start_date, end_date)
+        )
+        rows = cursor.fetchall()
+        result = {}
+        for row in rows:
+            date_value = row['appointment_date']
+            time_value = row['appointment_time']
+            date_key = date_value if isinstance(date_value, str) else str(date_value)
+            time_key = time_value if isinstance(time_value, str) else str(time_value)
+            result.setdefault(date_key, {})[time_key] = row['count']
+        return result
+    except Exception as e:
+        print(f"❌ Error loading slot counts: {e}")
+        return {}
+    finally:
+        conn.close()
+
 def init_db():
     """Initialize SQLite database"""
     conn = get_db_connection()
@@ -107,11 +141,21 @@ def init_db():
                 slot_20 INTEGER DEFAULT 0,
                 slot_21 INTEGER DEFAULT 0,
                 slot_22 INTEGER DEFAULT 0,
+                is_off_day INTEGER DEFAULT 0,
+                off_day_reason TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (doctor_id) REFERENCES users(id),
                 UNIQUE(doctor_id, availability_date)
             )
         """)
+
+        # Ensure new columns exist for existing installs
+        cur.execute("PRAGMA table_info(doctor_availability)")
+        existing_columns = {row[1] for row in cur.fetchall()}
+        if 'is_off_day' not in existing_columns:
+            cur.execute("ALTER TABLE doctor_availability ADD COLUMN is_off_day INTEGER DEFAULT 0")
+        if 'off_day_reason' not in existing_columns:
+            cur.execute("ALTER TABLE doctor_availability ADD COLUMN off_day_reason TEXT")
 
         # Create site notices table
         cur.execute("""
@@ -432,18 +476,19 @@ def save_doctor_availability(doctor_id, availability_date, slots):
         print(f"   Slots: {slots}")
         
         # Insert new availability
-            cursor.execute("""
-                INSERT INTO doctor_availability 
-                (doctor_id, availability_date, slot_09, slot_10, slot_11, slot_12, slot_13, 
-                 slot_18, slot_19, slot_20, slot_21, slot_22)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                doctor_id, availability_date,
-                int(bool(slots.get('09:00', 0))), int(bool(slots.get('10:00', 0))), int(bool(slots.get('11:00', 0))),
-                int(bool(slots.get('12:00', 0))), int(bool(slots.get('13:00', 0))), int(bool(slots.get('18:00', 0))),
-                int(bool(slots.get('19:00', 0))), int(bool(slots.get('20:00', 0))), int(bool(slots.get('21:00', 0))),
-                int(bool(slots.get('22:00', 0)))
-            ))
+        cursor.execute("""
+            INSERT INTO doctor_availability 
+            (doctor_id, availability_date, is_off_day, off_day_reason,
+             slot_09, slot_10, slot_11, slot_12, slot_13,
+             slot_18, slot_19, slot_20, slot_21, slot_22)
+            VALUES (?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            doctor_id, availability_date,
+            int(bool(slots.get('09:00', 0))), int(bool(slots.get('10:00', 0))), int(bool(slots.get('11:00', 0))),
+            int(bool(slots.get('12:00', 0))), int(bool(slots.get('13:00', 0))), int(bool(slots.get('18:00', 0))),
+            int(bool(slots.get('19:00', 0))), int(bool(slots.get('20:00', 0))), int(bool(slots.get('21:00', 0))),
+            int(bool(slots.get('22:00', 0)))
+        ))
         conn.commit()
         print(f"✅ Availability saved successfully!")
         return True
@@ -451,6 +496,37 @@ def save_doctor_availability(doctor_id, availability_date, slots):
         print(f"❌ Error saving availability: {e}")
         import traceback
         traceback.print_exc()
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def set_doctor_off_day(doctor_id, availability_date, reason=None):
+    """Mark a specific date as an off day"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM doctor_availability WHERE doctor_id = ? AND availability_date = ?",
+            (doctor_id, availability_date)
+        )
+        cursor.execute(
+            """
+            INSERT INTO doctor_availability
+            (doctor_id, availability_date, is_off_day, off_day_reason,
+             slot_09, slot_10, slot_11, slot_12, slot_13,
+             slot_18, slot_19, slot_20, slot_21, slot_22)
+            VALUES (?, ?, 1, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            """,
+            (doctor_id, availability_date, reason)
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"❌ Error setting off day: {e}")
         conn.rollback()
         return False
     finally:
@@ -504,6 +580,30 @@ def get_doctor_availability(doctor_id):
         print(f"❌ Error loading availability: {e}")
         import traceback
         traceback.print_exc()
+        return []
+    finally:
+        conn.close()
+
+
+def get_doctor_availability_range(doctor_id, start_date, end_date):
+    """Fetch availability records between two dates"""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT * FROM doctor_availability
+            WHERE doctor_id = ? AND availability_date BETWEEN ? AND ?
+            ORDER BY availability_date
+            """,
+            (doctor_id, start_date, end_date)
+        )
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        print(f"❌ Error loading availability range: {e}")
         return []
     finally:
         conn.close()

@@ -1,5 +1,7 @@
 import os
 import sys
+import calendar
+from zoneinfo import ZoneInfo
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify
 from app.ai_matcher import AIRemedyMatcher
 
@@ -10,10 +12,11 @@ if os.getenv("FLASK_ENV") == "production":
         load_patient_consultations, save_user, get_user, load_all_patients,
         update_consultation_reply, delete_consultation_media, get_patient_history,
         update_patient_notes, get_user_by_id, get_all_doctors, save_doctor_availability,
-        get_doctor_availability, get_availability_for_day, save_appointment,
+        get_doctor_availability, get_doctor_availability_range, get_availability_for_day, save_appointment,
         get_appointment, get_appointments_for_slot, get_patient_appointments,
         get_doctor_appointments, update_appointment_status, reschedule_appointment,
-        update_appointment_notes, get_slot_booking_count, get_availability_for_date, delete_doctor_availability,
+        update_appointment_notes, get_slot_booking_count, get_slot_bookings_for_range, get_availability_for_date, delete_doctor_availability,
+        set_doctor_off_day,
         save_site_notice, clear_site_notice, list_site_notices,
         set_site_notice_active, delete_site_notice
     )
@@ -23,10 +26,11 @@ else:
         load_patient_consultations, save_user, get_user, load_all_patients,
         update_consultation_reply, delete_consultation_media, get_patient_history,
         update_patient_notes, get_user_by_id, get_all_doctors, save_doctor_availability,
-        get_doctor_availability, get_availability_for_day, save_appointment,
+        get_doctor_availability, get_doctor_availability_range, get_availability_for_day, save_appointment,
         get_appointment, get_appointments_for_slot, get_patient_appointments,
         get_doctor_appointments, update_appointment_status, reschedule_appointment,
-        update_appointment_notes, get_slot_booking_count, get_availability_for_date, delete_doctor_availability,
+        update_appointment_notes, get_slot_booking_count, get_slot_bookings_for_range, get_availability_for_date, delete_doctor_availability,
+        set_doctor_off_day,
         save_site_notice, clear_site_notice, list_site_notices,
         set_site_notice_active, delete_site_notice
     )
@@ -36,6 +40,8 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "homeopathy-secret-key-2024")
+
+INDIA_TZ = ZoneInfo("Asia/Kolkata")
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -557,6 +563,7 @@ def patient_appointments():
 MORNING_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00"]
 EVENING_SLOTS = ["18:00", "19:00", "20:00", "21:00", "22:00"]
 ALL_SLOTS = MORNING_SLOTS + EVENING_SLOTS
+SLOT_COLUMN_MAP = {slot: f"slot_{slot.replace(':', '')}" for slot in ALL_SLOTS}
 MAX_PATIENTS_PER_SLOT = 15
 
 def format_time_display(time_str):
@@ -700,10 +707,24 @@ def doctor_availability():
         return redirect(url_for("doctor_login"))
     
     if request.method == "POST":
+        form_action = request.form.get("form_action", "save")
         availability_date = request.form.get("availability_date")
         
         if not availability_date:
             flash("Please select a date", "danger")
+            return redirect(url_for("doctor_availability"))
+
+        if form_action == "off_day":
+            reason = (request.form.get("off_day_reason") or "").strip() or None
+            if set_doctor_off_day(session["user"]["id"], availability_date, reason):
+                flash(f"Marked {availability_date} as an off day", "info")
+            else:
+                flash("Unable to mark off day. Please try again.", "danger")
+            return redirect(url_for("doctor_availability"))
+
+        if form_action == "clear_day":
+            delete_doctor_availability(session["user"]["id"], availability_date)
+            flash(f"Cleared availability for {availability_date}", "info")
             return redirect(url_for("doctor_availability"))
         
         # Get selected slots
@@ -714,9 +735,8 @@ def doctor_availability():
         
         # Check if any slot is selected
         if not any(slots.values()):
-            # No slots selected - delete availability for this date (mark as off day)
             delete_doctor_availability(session["user"]["id"], availability_date)
-            flash(f"Marked {availability_date} as OFF day", "info")
+            flash(f"Removed availability for {availability_date}. Use \"Make it off day\" to block bookings.", "info")
         else:
             save_doctor_availability(session["user"]["id"], availability_date, slots)
             flash(f"Availability saved for {availability_date}!", "success")
@@ -738,21 +758,170 @@ def api_get_availability(date_str):
         return jsonify({'error': 'Unauthorized'}), 401
     
     avail = get_availability_for_date(session["user"]["id"], date_str)
-    if avail:
-        slots = {
-            '09:00': avail.get('slot_09', 0),
-            '10:00': avail.get('slot_10', 0),
-            '11:00': avail.get('slot_11', 0),
-            '12:00': avail.get('slot_12', 0),
-            '13:00': avail.get('slot_13', 0),
-            '18:00': avail.get('slot_18', 0),
-            '19:00': avail.get('slot_19', 0),
-            '20:00': avail.get('slot_20', 0),
-            '21:00': avail.get('slot_21', 0),
-            '22:00': avail.get('slot_22', 0),
+    if not avail:
+        return jsonify({'exists': False, 'slots': {}, 'is_off_day': False})
+
+    def slot_enabled(raw_value):
+        if raw_value in (True, False):
+            return bool(raw_value)
+        try:
+            return bool(int(raw_value))
+        except (TypeError, ValueError):
+            return bool(raw_value)
+
+    is_off_day = bool(avail.get('is_off_day'))
+    bookings_map = get_slot_bookings_for_range(session["user"]["id"], date_str, date_str)
+    day_bookings = bookings_map.get(date_str, {})
+
+    slots_payload = {}
+    slot_details = {}
+    enabled_slots = []
+
+    for slot_time, column_name in SLOT_COLUMN_MAP.items():
+        raw_value = avail.get(column_name, 0)
+        enabled = slot_enabled(raw_value) and not is_off_day
+        slots_payload[slot_time] = 1 if enabled else 0
+        if enabled:
+            enabled_slots.append(slot_time)
+        booked = day_bookings.get(slot_time, 0)
+        capacity = MAX_PATIENTS_PER_SLOT
+        remaining = max(capacity - booked, 0) if enabled else capacity
+        slot_details[slot_time] = {
+            'enabled': enabled,
+            'booked': booked if enabled else 0,
+            'remaining': remaining if enabled else capacity,
+            'capacity': capacity,
+            'display': format_time_display(slot_time)
         }
-        return jsonify({'exists': True, 'slots': slots})
-    return jsonify({'exists': False, 'slots': {}})
+
+    total_capacity = len(enabled_slots) * MAX_PATIENTS_PER_SLOT
+    total_booked = sum(slot_details[s]['booked'] for s in enabled_slots)
+
+    response = {
+        'exists': True,
+        'is_off_day': is_off_day,
+        'off_day_reason': avail.get('off_day_reason'),
+        'slots': slots_payload,
+        'slot_details': slot_details,
+        'summary': {
+            'enabled_slots': len(enabled_slots),
+            'total_capacity': total_capacity,
+            'total_booked': total_booked,
+            'total_remaining': max(total_capacity - total_booked, 0)
+        }
+    }
+
+    if is_off_day:
+        response['message'] = 'Doctor is unavailable on this date.'
+
+    return jsonify(response)
+
+
+@app.route("/api/doctor/availability-summary")
+def api_doctor_availability_summary():
+    if "user" not in session or session["user"]["role"] != "doctor":
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    month_param = request.args.get("month")
+    india_now = datetime.now(INDIA_TZ)
+
+    try:
+        if month_param:
+            year_str, month_str = month_param.split("-")
+            year = int(year_str)
+            month = int(month_str)
+        else:
+            year = india_now.year
+            month = india_now.month
+    except (ValueError, AttributeError):
+        year = india_now.year
+        month = india_now.month
+
+    _, last_day = calendar.monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, last_day)
+
+    start_str = start_date.isoformat()
+    end_str = end_date.isoformat()
+
+    availability_rows = get_doctor_availability_range(session["user"]["id"], start_str, end_str)
+    booking_map = get_slot_bookings_for_range(session["user"]["id"], start_str, end_str)
+
+    def to_date_str(value):
+        if isinstance(value, date):
+            return value.strftime('%Y-%m-%d')
+        return str(value)
+
+    def slot_enabled(raw_value):
+        if raw_value in (True, False):
+            return bool(raw_value)
+        try:
+            return bool(int(raw_value))
+        except (TypeError, ValueError):
+            return bool(raw_value)
+
+    days = {}
+    for record in availability_rows:
+        date_key = to_date_str(record.get('availability_date'))
+        is_off_day = bool(record.get('is_off_day'))
+        off_reason = record.get('off_day_reason')
+
+        enabled_slots = []
+        slot_states = {}
+        for slot_time, column_name in SLOT_COLUMN_MAP.items():
+            raw_value = record.get(column_name, 0)
+            enabled = not is_off_day and slot_enabled(raw_value)
+            if enabled:
+                enabled_slots.append(slot_time)
+            slot_states[slot_time] = 1 if enabled else 0
+
+        day_bookings = booking_map.get(date_key, {})
+        booked_total = sum(day_bookings.get(slot_time, 0) for slot_time in enabled_slots)
+        capacity_total = len(enabled_slots) * MAX_PATIENTS_PER_SLOT
+        remaining_total = max(capacity_total - booked_total, 0)
+
+        if is_off_day:
+            status = 'off'
+        elif not enabled_slots:
+            status = 'clear'
+        elif remaining_total == 0:
+            status = 'full'
+        elif booked_total == 0:
+            status = 'available'
+        else:
+            status = 'partial'
+
+        days[date_key] = {
+            'status': status,
+            'is_off_day': is_off_day,
+            'off_day_reason': off_reason,
+            'enabled_slots': enabled_slots,
+            'slot_states': slot_states,
+            'bookings': day_bookings,
+            'capacity': capacity_total,
+            'booked': booked_total,
+            'remaining': remaining_total
+        }
+
+    prev_month_date = (start_date - timedelta(days=1)).replace(day=1)
+    next_month_date = (end_date + timedelta(days=1)).replace(day=1)
+
+    payload = {
+        'month': f"{year:04d}-{month:02d}",
+        'month_label': f"{calendar.month_name[month]} {year}",
+        'start': start_str,
+        'end': end_str,
+        'today': india_now.date().isoformat(),
+        'timezone': 'Asia/Kolkata',
+        'days': days,
+        'navigation': {
+            'prev': prev_month_date.strftime('%Y-%m'),
+            'next': next_month_date.strftime('%Y-%m')
+        }
+    }
+
+    return jsonify(payload)
+
 
 @app.route("/api/available-slots/<int:doctor_id>/<date_str>")
 def get_available_slots(doctor_id, date_str):
