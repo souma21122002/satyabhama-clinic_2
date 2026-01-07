@@ -48,7 +48,7 @@
 
     .calendar-weekdays {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 8px;
         margin-bottom: 8px;
         font-weight: 600;
@@ -56,10 +56,22 @@
         text-align: center;
     }
 
+    .calendar-panel {
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .calendar-panel .card-body {
+        overflow: hidden;
+    }
+
     .calendar-grid {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 2px;
     }
 
     .calendar-day {
@@ -68,6 +80,8 @@
         min-height: 92px;
         padding: 8px;
         background: #fff;
+        min-width: 0;
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -80,6 +94,7 @@
         cursor: pointer;
         width: 100%;
         height: 100%;
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -88,8 +103,8 @@
 
     .calendar-day:hover {
         border-color: #667eea;
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.18);
-        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(102, 126, 234, 0.16);
+        transform: none;
     }
 
     .calendar-day.placeholder,
@@ -151,8 +166,8 @@
     .calendar-day.status-off .calendar-meta { color: #6f42c1; }
 
     .calendar-day.selected {
-        border: 2px solid #764ba2;
-        box-shadow: 0 0 0 5px rgba(118, 75, 162, 0.18);
+        border: 1px solid #764ba2;
+        box-shadow: inset 0 0 0 3px rgba(118, 75, 162, 0.35);
     }
 
     .legend-chip {
@@ -267,7 +282,7 @@
         </div>
 
         <div class="col-lg-5">
-            <div class="card shadow h-100" style="border-radius: 20px;">
+            <div class="card shadow calendar-panel">
                 <div class="card-header bg-success text-white" style="border-radius: 20px 20px 0 0;">
                     <div class="d-flex justify-content-between align-items-center">
                         <button class="btn btn-light btn-sm" type="button" data-calendar-nav="prev">
