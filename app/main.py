@@ -563,7 +563,9 @@ def patient_appointments():
 MORNING_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00"]
 EVENING_SLOTS = ["18:00", "19:00", "20:00", "21:00", "22:00"]
 ALL_SLOTS = MORNING_SLOTS + EVENING_SLOTS
-SLOT_COLUMN_MAP = {slot: f"slot_{slot.replace(':', '')}" for slot in ALL_SLOTS}
+# Map slot times to DB columns.
+# DB columns are slot_09, slot_10, ... (NOT slot_0900).
+SLOT_COLUMN_MAP = {slot: f"slot_{int(slot.split(':')[0]):02d}" for slot in ALL_SLOTS}
 MAX_PATIENTS_PER_SLOT = 15
 
 def format_time_display(time_str):
