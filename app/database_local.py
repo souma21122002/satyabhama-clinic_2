@@ -217,9 +217,9 @@ def get_user(email):
         cur = conn.cursor()
         cur.execute("SELECT * FROM users WHERE email = ?", (email,))
         row = cur.fetchone()
-            if row:
-                return dict(row)
-            return None
+        if row:
+            return dict(row)
+        return None
     except Exception as e:
         print(f"Error: {e}")
         return None
@@ -235,8 +235,8 @@ def load_all_patients():
     try:
         cur = conn.cursor()
         cur.execute("SELECT * FROM users WHERE role = 'patient' ORDER BY created_at DESC")
-            rows = cur.fetchall()
-            return [dict(row) for row in rows]
+        rows = cur.fetchall()
+        return [dict(row) for row in rows]
     except Exception as e:
         print(f"Error: {e}")
         return []
@@ -286,11 +286,11 @@ def load_consultations():
     try:
         cur = conn.cursor()
         cur.execute("SELECT * FROM consultations ORDER BY created_at DESC")
+        rows = cur.fetchall()
         consultations = []
-            rows = cur.fetchall()
-            for row in rows:
+        for row in rows:
             c = dict(row)
-            c['images'] = json.loads(c['images']) if isinstance(c['images'], str) else []
+            c['images'] = json.loads(c['images']) if isinstance(c.get('images'), str) else []
             consultations.append(c)
         return consultations
     except Exception as e:
@@ -307,12 +307,15 @@ def load_patient_consultations(patient_email):
     
     try:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM consultations WHERE patient_email = ? ORDER BY created_at DESC", (patient_email,))
+        cur.execute(
+            "SELECT * FROM consultations WHERE patient_email = ? ORDER BY created_at DESC",
+            (patient_email,),
+        )
+        rows = cur.fetchall()
         consultations = []
-            rows = cur.fetchall()
-            for row in rows:
+        for row in rows:
             c = dict(row)
-            c['images'] = json.loads(c['images']) if isinstance(c['images'], str) else []
+            c['images'] = json.loads(c['images']) if isinstance(c.get('images'), str) else []
             consultations.append(c)
         return consultations
     except Exception as e:
@@ -437,8 +440,7 @@ def get_user_by_id(user_id):
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
-            return dict(row) if row else None
-        return None
+        return dict(row) if row else None
     except Exception as e:
         print(f"❌ Error getting user by id: {e}")
         return None
@@ -454,7 +456,7 @@ def get_all_doctors():
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE role = 'doctor' ORDER BY name")
         rows = cursor.fetchall()
-            return [dict(row) for row in rows]
+        return [dict(row) for row in rows]
     except Exception as e:
         print(f"❌ Error loading doctors: {e}")
         return []
