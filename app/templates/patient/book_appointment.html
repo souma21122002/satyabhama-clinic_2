@@ -23,6 +23,7 @@
     .step.completed { background: #4caf50; color: white; }
     .no-slots-message { background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 87, 34, 0.05)); border: 2px solid #ff9800; border-radius: 15px; padding: 30px; text-align: center; }
     .off-day-message { background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05)); border: 2px solid #dc3545; border-radius: 15px; padding: 30px; text-align: center; }
+    .not-updated-message { background: linear-gradient(135deg, rgba(13, 110, 253, 0.10), rgba(102, 126, 234, 0.05)); border: 2px solid #0d6efd; border-radius: 15px; padding: 30px; text-align: center; }
     .btn-book { background: linear-gradient(135deg, #4caf50, #45a049); border: none; padding: 15px 40px; font-size: 18px; font-weight: 600; border-radius: 12px; }
 </style>
 {% endblock %}
@@ -249,15 +250,55 @@ function fetchSlots() {
         .then(data => {
             console.log('Received slots data:', data);
             loading.style.display = 'none';
+
+            const status = (data && data.status) ? data.status : (data && data.available ? 'available' : 'unknown');
+            const message = escapeHtml((data && data.message) ? data.message : '');
+            const reason = escapeHtml((data && data.off_day_reason) ? data.off_day_reason : '');
             
             if (!data.available) {
-                // Doctor not available on this date
+                if (status === 'off_day') {
+                    content.innerHTML = `
+                        <div class="off-day-message">
+                            <i class="bi bi-slash-circle" style="font-size: 60px; color: #dc3545;"></i>
+                            <h5 class="mt-3 text-danger">Doctor Not Available</h5>
+                            <p class="text-muted mb-3">${message || 'Doctor is not available on this date.'}</p>
+                            ${reason ? `<div class="alert alert-light border mb-3"><strong>Note:</strong> ${reason}</div>` : ''}
+                            <p class="mb-0"><strong>Please select another date.</strong></p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (status === 'not_updated') {
+                    content.innerHTML = `
+                        <div class="not-updated-message">
+                            <i class="bi bi-clock-history" style="font-size: 60px; color: #0d6efd;"></i>
+                            <h5 class="mt-3" style="color:#0d6efd;">Slots Not Updated Yet</h5>
+                            <p class="text-muted mb-3">${message || 'Available slots are not updated yet. Please try later.'}</p>
+                            <p class="mb-0"><strong>Please try another date or check again later.</strong></p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (status === 'fully_booked' || status === 'no_upcoming') {
+                    content.innerHTML = `
+                        <div class="no-slots-message">
+                            <i class="bi bi-calendar-x" style="font-size: 50px; color: #ff9800;"></i>
+                            <h5 class="mt-3 text-warning">No Slots Available</h5>
+                            <p class="text-muted mb-3">${message || 'No slots available for this date.'}</p>
+                            <p class="mb-0">Please select another date.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Fallback for unknown unavailable state
                 content.innerHTML = `
                     <div class="off-day-message">
                         <i class="bi bi-calendar-x" style="font-size: 60px; color: #dc3545;"></i>
-                        <h5 class="mt-3 text-danger">Doctor Not Available</h5>
-                        <p class="text-muted mb-3">${data.message || 'The doctor has not set availability for this date.'}</p>
-                        <p class="mb-0"><strong>Please select another date.</strong></p>
+                        <h5 class="mt-3 text-danger">Not Available</h5>
+                        <p class="text-muted mb-3">${message || 'Please select another date.'}</p>
                     </div>
                 `;
                 return;
@@ -301,7 +342,7 @@ function fetchSlots() {
                     <div class="no-slots-message">
                         <i class="bi bi-calendar-x" style="font-size: 50px; color: #ff9800;"></i>
                         <h5 class="mt-3 text-warning">All Slots Fully Booked</h5>
-                        <p class="text-muted mb-3">${data.message || 'All available slots are booked for this date.'}</p>
+                        <p class="text-muted mb-3">${message || 'All available slots are booked for this date.'}</p>
                         <p class="mb-0">Please select another date.</p>
                     </div>
                 `;
@@ -318,6 +359,16 @@ function fetchSlots() {
                 </div>
             `;
         });
+}
+
+function escapeHtml(value) {
+    const str = String(value ?? '');
+    return str
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 }
 
 function selectTime(time, display, element) {

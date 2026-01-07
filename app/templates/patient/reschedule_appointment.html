@@ -60,25 +60,42 @@ dateInput.addEventListener('change', function() {
         .then(response => response.json())
         .then(data => {
             const hasSlots = data && Array.isArray(data.slots) && data.slots.length > 0;
-            timeSelect.innerHTML = '<option value="">-- Select time --</option>';
+
+            timeSelect.innerHTML = '';
 
             if (!data || data.available === false) {
-                const message = data && data.message ? data.message : 'Doctor not available on this date.';
-                timeSelect.innerHTML = `<option value="">${message}</option>`;
+                const status = data && data.status ? data.status : 'unavailable';
+                const reason = data && data.off_day_reason ? ` Note: ${data.off_day_reason}` : '';
+                const message = (data && data.message ? data.message : 'Doctor not available on this date.') + (status === 'off_day' ? reason : '');
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = message;
+                timeSelect.appendChild(opt);
                 return;
             }
 
             if (!hasSlots) {
-                const message = data && data.message ? data.message : 'All slots are booked for this date.';
-                timeSelect.innerHTML = `<option value="">${message}</option>`;
+                const message = data && data.message ? data.message : 'No slots available for this date.';
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = message;
+                timeSelect.appendChild(opt);
                 return;
             }
+
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = '-- Select time --';
+            timeSelect.appendChild(placeholder);
 
             data.slots.forEach(slot => {
                 const value = slot.time || slot;
                 const label = slot.display || slot.time || slot;
                 const remaining = typeof slot.remaining === 'number' ? ` (${slot.remaining} left)` : '';
-                timeSelect.innerHTML += `<option value="${value}">${label}${remaining}</option>`;
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = `${label}${remaining}`;
+                timeSelect.appendChild(opt);
             });
 
             timeSelect.disabled = false;

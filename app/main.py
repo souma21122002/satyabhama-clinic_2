@@ -930,23 +930,37 @@ def get_available_slots(doctor_id, date_str):
     try:
         selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
     except ValueError:
-        return jsonify({'error': 'Invalid date format', 'slots': [], 'available': False})
+        return jsonify({'error': 'Invalid date format', 'slots': [], 'available': False, 'status': 'invalid_date'})
     
     if selected_date < date.today():
-        return jsonify({'slots': [], 'message': 'Cannot book for past dates', 'available': False})
+        return jsonify({'slots': [], 'message': 'Cannot book for past dates', 'available': False, 'status': 'past_date'})
     
     # Get doctor's availability for this date
     avail = get_availability_for_date(doctor_id, date_str)
-    print(f"🔍 DEBUG: Fetching slots for doctor {doctor_id}, date {date_str}")
-    print(f"   Availability data: {avail}")
     
     if not avail:
-        # No availability set for this date - doctor not available
+        # No availability record yet (unset)
         return jsonify({
             'slots': [],
             'available': False,
-            'message': 'Doctor is not available on this date. Please select another date.'
+            'status': 'not_updated',
+            'message': 'Available slots are not updated yet. Please try later.'
         })
+
+    is_off_day = bool(avail.get('is_off_day'))
+    off_day_reason = (avail.get('off_day_reason') or '').strip()
+
+    if is_off_day:
+        payload = {
+            'slots': [],
+            'available': False,
+            'status': 'off_day',
+            'message': 'Doctor is not available on this date.',
+            'is_off_day': True
+        }
+        if off_day_reason:
+            payload['off_day_reason'] = off_day_reason
+        return jsonify(payload)
     
     # Map slot columns to times
     slot_mapping = {
@@ -957,33 +971,30 @@ def get_available_slots(doctor_id, date_str):
     }
     
     available_slots = []
+    enabled_any = False
+    skipped_past_any = False
     
     for slot_time, col_name in slot_mapping.items():
         # Check if slot is enabled by doctor - handle boolean, int, and string values
         slot_val = avail.get(col_name)
         # Convert to boolean then to int: True->1, False->0
-        try:
-            slot_value = 1 if slot_val else 0
-        except:
-            slot_value = 0
-        
-        print(f"   {col_name}: {slot_val} -> {slot_value}")
+        slot_value = 1 if slot_val else 0
         
         if not slot_value:
             continue
+
+        enabled_any = True
         
         # Skip past slots for today
         if selected_date == date.today():
             slot_hour = int(slot_time.split(':')[0])
             current_hour = datetime.now().hour
             if slot_hour <= current_hour:
+                skipped_past_any = True
                 continue
         
         # Check booking count
-        try:
-            booking_count = get_slot_booking_count(doctor_id, date_str, slot_time)
-        except:
-            booking_count = 0
+        booking_count = get_slot_booking_count(doctor_id, date_str, slot_time)
         
         if booking_count < MAX_PATIENTS_PER_SLOT:
             remaining = MAX_PATIENTS_PER_SLOT - booking_count
@@ -995,15 +1006,30 @@ def get_available_slots(doctor_id, date_str):
             })
     
     if not available_slots:
-        print(f"   ⚠️  No slots available for this date")
+        if not enabled_any:
+            return jsonify({
+                'slots': [],
+                'available': False,
+                'status': 'not_updated',
+                'message': 'Available slots are not updated yet. Please try later.'
+            })
+
+        if selected_date == date.today() and skipped_past_any:
+            return jsonify({
+                'slots': [],
+                'available': False,
+                'status': 'no_upcoming',
+                'message': 'No upcoming slots available for today. Please select another date.'
+            })
+
         return jsonify({
             'slots': [],
-            'available': True,
-            'message': 'All slots are fully booked for this date.'
+            'available': False,
+            'status': 'fully_booked',
+            'message': 'This date is fully booked. Please select another date.'
         })
     
-    print(f"   ✓ Found {len(available_slots)} available slots: {[s['time'] for s in available_slots]}")
-    return jsonify({'slots': available_slots, 'available': True})
+    return jsonify({'slots': available_slots, 'available': True, 'status': 'available'})
 
 # ========== SERVE UPLOADS ==========
 @app.route("/uploads/<path:filename>")

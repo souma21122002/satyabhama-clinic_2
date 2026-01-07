@@ -105,6 +105,7 @@
         font-weight: 700;
         color: #2d2d2d;
         font-size: 1rem;
+        padding-right: 44px;
     }
 
     .calendar-meta {
@@ -114,19 +115,24 @@
 
     .calendar-today-tag {
         position: absolute;
-        bottom: 6px;
-        left: 8px;
+        top: 6px;
+        right: 8px;
         font-size: 0.7rem;
         font-weight: 600;
         color: #0d6efd;
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(13, 110, 253, 0.25);
+        padding: 2px 8px;
+        border-radius: 999px;
+        pointer-events: none;
     }
 
     .calendar-day.status-available { border-left: 4px solid #198754; }
     .calendar-day.status-partial { border-left: 4px solid #fd7e14; }
     .calendar-day.status-full { border-left: 4px solid #dc3545; }
     .calendar-day.status-off {
-        border-left: 4px solid #6c757d;
-        background: linear-gradient(135deg, rgba(108,117,125,0.08), rgba(108,117,125,0.03));
+        border-left: 4px solid #6f42c1;
+        background: linear-gradient(135deg, rgba(111,66,193,0.10), rgba(111,66,193,0.04));
     }
     .calendar-day.status-clear,
     .calendar-day.status-unset {
@@ -142,7 +148,7 @@
     .calendar-day.status-available .calendar-meta { color: #198754; }
     .calendar-day.status-partial .calendar-meta { color: #fd7e14; }
     .calendar-day.status-full .calendar-meta { color: #dc3545; }
-    .calendar-day.status-off .calendar-meta { color: #6c757d; }
+    .calendar-day.status-off .calendar-meta { color: #6f42c1; }
 
     .calendar-day.selected {
         border: 2px solid #764ba2;
@@ -162,7 +168,7 @@
     .legend-chip.status-available { background: rgba(25, 135, 84, 0.12); border-color: rgba(25,135,84,0.3); color: #198754; }
     .legend-chip.status-partial { background: rgba(253, 126, 20, 0.12); border-color: rgba(253,126,20,0.3); color: #fd7e14; }
     .legend-chip.status-full { background: rgba(220, 53, 69, 0.12); border-color: rgba(220,53,69,0.3); color: #dc3545; }
-    .legend-chip.status-off { background: rgba(108,117,125,0.12); border-color: rgba(108,117,125,0.3); color: #6c757d; }
+    .legend-chip.status-off { background: rgba(111,66,193,0.12); border-color: rgba(111,66,193,0.30); color: #6f42c1; }
     .legend-chip.status-unset { background: rgba(102, 126, 234, 0.08); border-color: rgba(102,126,234,0.25); color: #495057; }
 
     .slot-pill {
@@ -185,7 +191,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container py-4 pb-5">
     <div class="row g-4 align-items-stretch">
         <div class="col-lg-7">
             <div class="card shadow h-100" style="border-radius: 20px;">
@@ -282,13 +288,13 @@
                         <span class="legend-chip status-available"><span class="rounded-circle" style="width:10px;height:10px;background:#198754;display:inline-block;"></span>Available</span>
                         <span class="legend-chip status-partial"><span class="rounded-circle" style="width:10px;height:10px;background:#fd7e14;display:inline-block;"></span>Partially booked</span>
                         <span class="legend-chip status-full"><span class="rounded-circle" style="width:10px;height:10px;background:#dc3545;display:inline-block;"></span>Full</span>
-                        <span class="legend-chip status-off"><span class="rounded-circle" style="width:10px;height:10px;background:#6c757d;display:inline-block;"></span>Off day</span>
+                        <span class="legend-chip status-off"><span class="rounded-circle" style="width:10px;height:10px;background:#6f42c1;display:inline-block;"></span>Off day</span>
                         <span class="legend-chip status-unset"><span class="rounded-circle" style="width:10px;height:10px;background:#adb5bd;display:inline-block;"></span>Not set</span>
                     </div>
                 </div>
             </div>
 
-            <div class="card mt-3" style="border-radius: 15px;">
+            <div class="card mt-3 mb-4" style="border-radius: 15px;">
                 <div class="card-body">
                     <h6 class="text-warning"><i class="bi bi-lightbulb me-2"></i>Quick tips</h6>
                     <ul class="small text-muted mb-0">
