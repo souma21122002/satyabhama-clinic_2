@@ -462,8 +462,26 @@
             </div>
             
             <p><strong>Symptoms:</strong> {{ c.symptoms[:200] if c.symptoms else 'N/A' }}{% if c.symptoms and c.symptoms|length > 200 %}...{% endif %}</p>
+
+            {% set drive_media = c.drive_media or [] %}
+            {% set drive_audio = drive_media | selectattr('media_type', 'equalto', 'audio') | list %}
+            {% set drive_video = drive_media | selectattr('media_type', 'equalto', 'video') | list %}
+            {% set drive_images = drive_media | selectattr('media_type', 'equalto', 'image') | list %}
             
             <div class="row">
+                {% if drive_audio and drive_audio|length > 0 %}
+                <div class="col-md-6 mb-3">
+                    <div class="bg-light p-3 rounded">
+                        <h6><i class="bi bi-mic-fill text-danger"></i> Audio (Drive)</h6>
+                        {% for a in drive_audio %}
+                        <audio controls preload="metadata" class="w-100 mt-2" style="height: 40px;">
+                            <source src="/drive/media/{{ a.id }}" type="{{ a.mime_type or 'audio/mpeg' }}">
+                        </audio>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
                 {% if c.voice_record %}
                 <div class="col-md-6 mb-3">
                     <div class="bg-light p-3 rounded">
@@ -477,6 +495,22 @@
                 </div>
                 {% endif %}
                 
+                {% if drive_images and drive_images|length > 0 %}
+                <div class="col-md-6 mb-3">
+                    <div class="bg-light p-3 rounded">
+                        <h6><i class="bi bi-images text-primary"></i> Images (Drive) ({{ drive_images|length }})</h6>
+                        <div class="d-flex gap-2 mt-2 flex-wrap">
+                            {% for img in drive_images %}
+                            <a href="/drive/media/{{ img.id }}" target="_blank">
+                                <img src="/drive/media/{{ img.id }}"
+                                     style="height: 70px; width: 70px; object-fit: cover; border-radius: 8px; border: 2px solid #ddd;">
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 {% if c.images and c.images|length > 0 %}
                 <div class="col-md-6 mb-3">
                     <div class="bg-light p-3 rounded">
@@ -493,6 +527,17 @@
                 </div>
                 {% endif %}
             </div>
+
+            {% if drive_video and drive_video|length > 0 %}
+            <div class="bg-light p-3 rounded mb-3">
+                <h6><i class="bi bi-camera-video text-success"></i> Videos (Drive) ({{ drive_video|length }})</h6>
+                {% for v in drive_video %}
+                <video controls preload="metadata" class="w-100 mt-2" style="max-height: 320px;">
+                    <source src="/drive/media/{{ v.id }}" type="{{ v.mime_type or 'video/mp4' }}">
+                </video>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

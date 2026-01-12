@@ -66,6 +66,26 @@ def init_db():
                 FOREIGN KEY (patient_email) REFERENCES users(email)
             )
         """)
+
+        # Consultation media stored in Google Drive (or other backends)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS consultation_media (
+                id SERIAL PRIMARY KEY,
+                consultation_id INTEGER NOT NULL,
+                patient_email VARCHAR(255) NOT NULL,
+                drive_file_id TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                mime_type TEXT,
+                media_type VARCHAR(20) NOT NULL,
+                size_bytes BIGINT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
+                FOREIGN KEY (patient_email) REFERENCES users(email)
+            )
+        """)
+
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_consultation_media_consultation_id ON consultation_media(consultation_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_consultation_media_patient_email ON consultation_media(patient_email)")
         
         # Create case history table
         cur.execute("""
@@ -231,6 +251,7 @@ def save_consultation(consultation):
                 (patient_email, patient_name, symptoms, duration, severity, medical_history, 
                  current_medications, voice_record, images, status, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
             """, (
                 consultation['patient_email'],
                 consultation['patient_name'],
@@ -244,8 +265,9 @@ def save_consultation(consultation):
                 consultation.get('status', 'pending'),
                 consultation.get('created_at', datetime.now())
             ))
+            row = cur.fetchone()
             conn.commit()
-            return True
+            return int(row['id']) if row else None
     except Exception as e:
         print(f"❌ Error saving consultation: {e}")
         conn.rollback()
@@ -264,6 +286,9 @@ def load_consultations():
             cur.execute("SELECT * FROM consultations ORDER BY created_at DESC")
             rows = cur.fetchall()
             consultations = []
+            consultation_ids = [int(r['id']) for r in rows]
+            media_map = _load_media_map_for_consultations(conn, consultation_ids)
+
             for row in rows:
                 cons = dict(row)
                 if cons.get('images'):
@@ -272,6 +297,7 @@ def load_consultations():
                     cons['images'] = []
                 if cons.get('doctor_reply'):
                     cons['doctor_reply'] = json.loads(cons['doctor_reply']) if isinstance(cons['doctor_reply'], str) else cons['doctor_reply']
+                cons['drive_media'] = media_map.get(int(cons['id']), [])
                 consultations.append(cons)
             return consultations
     except Exception as e:
@@ -291,6 +317,9 @@ def load_patient_consultations(patient_email):
             cur.execute("SELECT * FROM consultations WHERE patient_email = %s ORDER BY created_at DESC", (patient_email,))
             rows = cur.fetchall()
             consultations = []
+            consultation_ids = [int(r['id']) for r in rows]
+            media_map = _load_media_map_for_consultations(conn, consultation_ids)
+
             for row in rows:
                 cons = dict(row)
                 if cons.get('images'):
@@ -299,8 +328,167 @@ def load_patient_consultations(patient_email):
                     cons['images'] = []
                 if cons.get('doctor_reply'):
                     cons['doctor_reply'] = json.loads(cons['doctor_reply']) if isinstance(cons['doctor_reply'], str) else cons['doctor_reply']
+                cons['drive_media'] = media_map.get(int(cons['id']), [])
                 consultations.append(cons)
             return consultations
+
+    except Exception as e:
+        print(f"❌ Error loading patient consultations: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_consultation_by_id(consultation_id):
+    """Get consultation by id"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM consultations WHERE id = %s", (consultation_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            cons = dict(row)
+            if cons.get('images'):
+                cons['images'] = json.loads(cons['images']) if isinstance(cons['images'], str) else cons['images']
+            else:
+                cons['images'] = []
+            if cons.get('doctor_reply'):
+                cons['doctor_reply'] = json.loads(cons['doctor_reply']) if isinstance(cons['doctor_reply'], str) else cons['doctor_reply']
+            cons['drive_media'] = list_consultation_media(consultation_id)
+            return cons
+    except Exception as e:
+        print(f"❌ Error loading consultation: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def add_consultation_media(consultation_id, patient_email, drive_file_id, file_name, mime_type, media_type, size_bytes=None):
+    """Insert media row for a consultation"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO consultation_media
+                (consultation_id, patient_email, drive_file_id, file_name, mime_type, media_type, size_bytes, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                (consultation_id, patient_email, drive_file_id, file_name, mime_type, media_type, size_bytes, datetime.now()),
+            )
+            row = cur.fetchone()
+            conn.commit()
+            return int(row['id']) if row else None
+    except Exception as e:
+        print(f"❌ Error saving consultation media: {e}")
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+
+def list_consultation_media(consultation_id):
+    """List media for a consultation"""
+    conn = get_db_connection()
+    if not conn:
+        return []
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, consultation_id, patient_email, drive_file_id, file_name, mime_type, media_type, size_bytes, created_at
+                FROM consultation_media
+                WHERE consultation_id = %s
+                ORDER BY created_at ASC, id ASC
+                """,
+                (consultation_id,),
+            )
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+    except Exception as e:
+        print(f"❌ Error listing consultation media: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_consultation_media(media_id):
+    """Get one media row"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, consultation_id, patient_email, drive_file_id, file_name, mime_type, media_type, size_bytes, created_at
+                FROM consultation_media
+                WHERE id = %s
+                """,
+                (media_id,),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+    except Exception as e:
+        print(f"❌ Error loading consultation media: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def delete_consultation_media_row(media_id):
+    """Delete media row (call Drive delete separately)"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM consultation_media WHERE id = %s", (media_id,))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"❌ Error deleting consultation media row: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def _load_media_map_for_consultations(conn, consultation_ids):
+    if not consultation_ids:
+        return {}
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, consultation_id, patient_email, drive_file_id, file_name, mime_type, media_type, size_bytes, created_at
+                FROM consultation_media
+                WHERE consultation_id = ANY(%s)
+                ORDER BY created_at ASC, id ASC
+                """,
+                (consultation_ids,),
+            )
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                d = dict(r)
+                cid = int(d['consultation_id'])
+                result.setdefault(cid, []).append(d)
+            return result
+    except Exception as e:
+        print(f"❌ Error loading media map: {e}")
+        return {}
     except Exception as e:
         print(f"❌ Error loading patient consultations: {e}")
         return []

@@ -124,10 +124,34 @@
             <!-- Attachments -->
             <div class="card p-3 section-card">
                 <h6 class="border-bottom pb-2 mb-2"><i class="bi bi-paperclip text-secondary"></i> Attachments</h6>
+
+                {% set drive_media = consultation.drive_media or [] %}
+                {% set drive_audio = drive_media | selectattr('media_type', 'equalto', 'audio') | list %}
+                {% set drive_video = drive_media | selectattr('media_type', 'equalto', 'video') | list %}
+                {% set drive_images = drive_media | selectattr('media_type', 'equalto', 'image') | list %}
                 
                 <div class="row">
                     <!-- Voice Recording -->
                     <div class="col-md-{% if consultation.images and consultation.images|length > 0 %}6{% else %}12{% endif %}">
+                        {% if drive_audio and drive_audio|length > 0 %}
+                        <div class="mb-3">
+                            <small class="text-muted"><i class="bi bi-mic-fill text-danger"></i> Voice Recording (Drive):</small>
+                            {% for a in drive_audio %}
+                            <div class="mt-2">
+                                <audio controls preload="auto" class="w-100" style="height: 35px;">
+                                    <source src="/drive/media/{{ a.id }}" type="{{ a.mime_type or 'audio/mpeg' }}">
+                                </audio>
+                                <div class="mt-1">
+                                    <form action="/doctor/delete-drive-media/{{ a.id }}" method="POST" class="d-inline"
+                                          onsubmit="return confirm('Delete audio permanently from Drive?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
                         {% if consultation.voice_record %}
                         <div class="mb-2">
                             <small class="text-muted"><i class="bi bi-mic-fill text-danger"></i> Voice Recording:</small>
@@ -147,12 +171,31 @@
                             </div>
                         </div>
                         {% else %}
+                        {% if not drive_audio or drive_audio|length == 0 %}
                         <p class="text-muted small mb-0"><i class="bi bi-mic-mute"></i> No voice recording</p>
+                        {% endif %}
                         {% endif %}
                     </div>
                     
                     <!-- Images -->
                     <div class="col-md-{% if consultation.voice_record %}6{% else %}12{% endif %}">
+                        {% if drive_images and drive_images|length > 0 %}
+                        <small class="text-muted"><i class="bi bi-images text-primary"></i> Images (Drive) ({{ drive_images|length }}):</small>
+                        <div class="d-flex flex-wrap gap-1 mt-1 mb-2">
+                            {% for img in drive_images %}
+                            <div class="position-relative">
+                                <a href="/drive/media/{{ img.id }}" target="_blank">
+                                    <img src="/drive/media/{{ img.id }}" class="rounded" style="height: 50px; width: 50px; object-fit: cover;">
+                                </a>
+                                <form action="/doctor/delete-drive-media/{{ img.id }}" method="POST" class="position-absolute" style="top: -5px; right: -5px;"
+                                      onsubmit="return confirm('Delete image permanently from Drive?');">
+                                    <button type="submit" class="btn btn-danger btn-sm rounded-circle p-0" style="width: 18px; height: 18px; font-size: 10px;">×</button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
                         {% if consultation.images and consultation.images|length > 0 %}
                         <small class="text-muted"><i class="bi bi-images text-primary"></i> Images ({{ consultation.images|length }}):</small>
                         <div class="d-flex flex-wrap gap-1 mt-1">
@@ -170,10 +213,30 @@
                             {% endfor %}
                         </div>
                         {% else %}
+                        {% if not drive_images or drive_images|length == 0 %}
                         <p class="text-muted small mb-0"><i class="bi bi-image"></i> No images</p>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>
+
+                {% if drive_video and drive_video|length > 0 %}
+                <hr class="my-3">
+                <small class="text-muted"><i class="bi bi-camera-video text-success"></i> Videos (Drive) ({{ drive_video|length }}):</small>
+                <div class="mt-2">
+                    {% for v in drive_video %}
+                    <div class="mb-3">
+                        <video controls preload="metadata" class="w-100" style="max-height: 320px;">
+                            <source src="/drive/media/{{ v.id }}" type="{{ v.mime_type or 'video/mp4' }}">
+                        </video>
+                        <form action="/doctor/delete-drive-media/{{ v.id }}" method="POST" class="d-inline"
+                              onsubmit="return confirm('Delete video permanently from Drive?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger mt-1"><i class="bi bi-trash"></i> Delete video</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
             
             <!-- Previous Consultations History -->

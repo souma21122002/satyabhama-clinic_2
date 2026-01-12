@@ -1,8 +1,9 @@
 import os
 import sys
 import calendar
+import re
 from zoneinfo import ZoneInfo
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify, Response, abort, stream_with_context
 from app.ai_matcher import AIRemedyMatcher
 
 # Use appropriate database based on environment
@@ -11,6 +12,7 @@ if os.getenv("FLASK_ENV") == "production":
         init_db, save_case, load_all_cases, save_consultation, load_consultations,
         load_patient_consultations, save_user, get_user, load_all_patients,
         update_consultation_reply, delete_consultation_media, get_patient_history,
+        get_consultation_by_id, add_consultation_media, get_consultation_media, delete_consultation_media_row,
         update_patient_notes, get_user_by_id, get_all_doctors, save_doctor_availability,
         get_doctor_availability, get_doctor_availability_range, get_availability_for_day, save_appointment,
         get_appointment, get_appointments_for_slot, get_patient_appointments,
@@ -25,6 +27,7 @@ else:
         init_db, save_case, load_all_cases, save_consultation, load_consultations,
         load_patient_consultations, save_user, get_user, load_all_patients,
         update_consultation_reply, delete_consultation_media, get_patient_history,
+        get_consultation_by_id, add_consultation_media, get_consultation_media, delete_consultation_media_row,
         update_patient_notes, get_user_by_id, get_all_doctors, save_doctor_availability,
         get_doctor_availability, get_doctor_availability_range, get_availability_for_day, save_appointment,
         get_appointment, get_appointments_for_slot, get_patient_appointments,
@@ -38,6 +41,8 @@ else:
 from datetime import datetime, date, timedelta
 from werkzeug.utils import secure_filename
 
+from app.drive_storage import GoogleDriveStorage, DriveConfigError, classify_media_type, get_authorized_session
+
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "homeopathy-secret-key-2024")
 
@@ -49,6 +54,31 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 ALLOWED_AUDIO = {'webm', 'mp3', 'wav', 'ogg', 'm4a'}
 ALLOWED_IMAGES = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_VIDEOS = {'mp4', 'webm', 'mov', 'mkv', 'avi'}
+
+
+def _safe_folder_fragment(value: str) -> str:
+    value = (value or "").strip()
+    value = re.sub(r"\s+", "_", value)
+    value = re.sub(r"[^a-zA-Z0-9_\-]", "", value)
+    return value or "user"
+
+
+def _patient_folder_name(user_id: int, user_name: str) -> str:
+    return f"{int(user_id):010d}_{_safe_folder_fragment(user_name)}"
+
+
+def _get_drive_storage() -> GoogleDriveStorage | None:
+    parent_id = os.getenv("GOOGLE_DRIVE_PARENT_FOLDER_ID", "").strip()
+    if not parent_id or not os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
+        return None
+    try:
+        return GoogleDriveStorage(parent_id)
+    except DriveConfigError:
+        return None
+
+
+DRIVE_STORAGE = _get_drive_storage()
 
 try:
     init_db()
@@ -88,6 +118,89 @@ def add_security_headers(response):
 
 def allowed_file(filename, allowed_set):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
+
+
+@app.route("/drive/media/<int:media_id>")
+def drive_media(media_id):
+    if "user" not in session:
+        abort(401)
+
+    media = get_consultation_media(media_id)
+    if not media:
+        abort(404)
+
+    consultation = get_consultation_by_id(media.get('consultation_id'))
+    if not consultation:
+        abort(404)
+
+    role = session["user"].get("role")
+    if role == "patient":
+        if consultation.get('patient_email') != session["user"].get("email"):
+            abort(403)
+    elif role != "doctor":
+        abort(403)
+
+    if not DRIVE_STORAGE:
+        abort(503)
+
+    auth_session = get_authorized_session()
+    url = f"https://www.googleapis.com/drive/v3/files/{media['drive_file_id']}?alt=media"
+
+    headers = {}
+    range_header = request.headers.get("Range")
+    if range_header:
+        headers["Range"] = range_header
+
+    upstream = auth_session.get(url, headers=headers, stream=True)
+    if upstream.status_code in (401, 403):
+        abort(403)
+    if upstream.status_code == 404:
+        abort(404)
+    if upstream.status_code >= 400:
+        abort(502)
+
+    def generate():
+        try:
+            for chunk in upstream.iter_content(chunk_size=256 * 1024):
+                if chunk:
+                    yield chunk
+        finally:
+            upstream.close()
+
+    resp = Response(stream_with_context(generate()), status=upstream.status_code)
+    resp.headers["Content-Type"] = upstream.headers.get("Content-Type") or media.get('mime_type') or "application/octet-stream"
+    for key in ("Content-Length", "Content-Range", "Accept-Ranges"):
+        if upstream.headers.get(key):
+            resp.headers[key] = upstream.headers[key]
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
+
+
+@app.route("/doctor/delete-drive-media/<int:media_id>", methods=["POST"])
+def doctor_delete_drive_media(media_id):
+    if "user" not in session or session["user"].get("role") != "doctor":
+        flash("Unauthorized", "danger")
+        return redirect(url_for("doctor_login"))
+
+    media = get_consultation_media(media_id)
+    if not media:
+        flash("Media not found", "warning")
+        return redirect(request.referrer or url_for("doctor_dashboard"))
+
+    if not DRIVE_STORAGE:
+        flash("Drive is not configured", "danger")
+        return redirect(request.referrer or url_for("doctor_dashboard"))
+
+    try:
+        DRIVE_STORAGE.delete_file_permanently(file_id=media['drive_file_id'])
+        delete_consultation_media_row(media_id)
+        flash("Media deleted permanently", "success")
+    except Exception as e:
+        print(f"❌ Drive delete error: {e}")
+        flash("Unable to delete media from Drive", "danger")
+
+    consultation_id = media.get('consultation_id')
+    return redirect(request.referrer or url_for("doctor_reply", consultation_id=consultation_id))
 
 
 def enrich_notice(notice):
@@ -294,38 +407,146 @@ def patient_consult():
         return redirect(url_for("login"))
     
     if request.method == "POST":
-        voice_filename = None
-        if "voice_record" in request.files:
-            voice_file = request.files["voice_record"]
-            if voice_file.filename and allowed_file(voice_file.filename, ALLOWED_AUDIO):
-                voice_filename = f"audio_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(voice_file.filename)}"
-                voice_file.save(os.path.join(app.config["UPLOAD_FOLDER"], voice_filename))
-        
-        image_filenames = []
-        if "images" in request.files:
-            images = request.files.getlist("images")
-            for img in images:
-                if img.filename and allowed_file(img.filename, ALLOWED_IMAGES):
-                    img_filename = f"img_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(img.filename)}"
-                    img.save(os.path.join(app.config["UPLOAD_FOLDER"], img_filename))
-                    image_filenames.append(img_filename)
-        
-        consultation = {
-            "patient_email": session["user"]["email"],
-            "patient_name": session["user"]["name"],
-            "symptoms": request.form.get("symptoms"),
-            "duration": request.form.get("duration"),
-            "severity": request.form.get("severity"),
-            "medical_history": request.form.get("medical_history"),
-            "current_medications": request.form.get("current_medications"),
-            "voice_record": voice_filename,
-            "images": image_filenames,
-            "status": "pending",
-            "doctor_reply": None,
-            "created_at": datetime.now().isoformat()
-        }
-        
-        save_consultation(consultation)
+        # Prefer Drive storage when configured
+        if DRIVE_STORAGE:
+            consultation = {
+                "patient_email": session["user"]["email"],
+                "patient_name": session["user"]["name"],
+                "symptoms": request.form.get("symptoms"),
+                "duration": request.form.get("duration"),
+                "severity": request.form.get("severity"),
+                "medical_history": request.form.get("medical_history"),
+                "current_medications": request.form.get("current_medications"),
+                "voice_record": None,
+                "images": [],
+                "status": "pending",
+                "doctor_reply": None,
+                "created_at": datetime.now().isoformat()
+            }
+
+            consultation_id = save_consultation(consultation)
+            if not consultation_id:
+                flash("Unable to submit consultation. Please try again.", "danger")
+                return redirect(url_for("patient_consult"))
+
+            patient_folder = _patient_folder_name(session["user"]["id"], session["user"]["name"])
+            try:
+                _, consultation_folder_id = DRIVE_STORAGE.ensure_patient_and_consultation_folders(
+                    patient_folder_name=patient_folder,
+                    consultation_id=int(consultation_id),
+                )
+            except Exception as e:
+                print(f"❌ Drive folder error: {e}")
+                consultation_folder_id = None
+
+            if consultation_folder_id:
+                # Audio: form has two inputs with same name; pick first real file
+                for voice_file in request.files.getlist("voice_record"):
+                    if voice_file and voice_file.filename and allowed_file(voice_file.filename, ALLOWED_AUDIO):
+                        try:
+                            filename = f"audio_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(voice_file.filename)}"
+                            uploaded = DRIVE_STORAGE.upload_file(
+                                folder_id=consultation_folder_id,
+                                filename=filename,
+                                mime_type=voice_file.mimetype,
+                                fileobj=voice_file.stream,
+                            )
+                            add_consultation_media(
+                                int(consultation_id),
+                                session["user"]["email"],
+                                uploaded.file_id,
+                                uploaded.name,
+                                uploaded.mime_type,
+                                classify_media_type(uploaded.mime_type),
+                                uploaded.size_bytes,
+                            )
+                        except Exception as e:
+                            print(f"❌ Drive upload audio error: {e}")
+                        break
+
+                # Images
+                for img in request.files.getlist("images"):
+                    if img and img.filename and allowed_file(img.filename, ALLOWED_IMAGES):
+                        try:
+                            filename = f"img_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(img.filename)}"
+                            uploaded = DRIVE_STORAGE.upload_file(
+                                folder_id=consultation_folder_id,
+                                filename=filename,
+                                mime_type=img.mimetype,
+                                fileobj=img.stream,
+                            )
+                            add_consultation_media(
+                                int(consultation_id),
+                                session["user"]["email"],
+                                uploaded.file_id,
+                                uploaded.name,
+                                uploaded.mime_type,
+                                classify_media_type(uploaded.mime_type),
+                                uploaded.size_bytes,
+                            )
+                        except Exception as e:
+                            print(f"❌ Drive upload image error: {e}")
+
+                # Videos
+                for vid in request.files.getlist("videos"):
+                    if vid and vid.filename and allowed_file(vid.filename, ALLOWED_VIDEOS):
+                        try:
+                            filename = f"video_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(vid.filename)}"
+                            uploaded = DRIVE_STORAGE.upload_file(
+                                folder_id=consultation_folder_id,
+                                filename=filename,
+                                mime_type=vid.mimetype,
+                                fileobj=vid.stream,
+                            )
+                            add_consultation_media(
+                                int(consultation_id),
+                                session["user"]["email"],
+                                uploaded.file_id,
+                                uploaded.name,
+                                uploaded.mime_type,
+                                classify_media_type(uploaded.mime_type),
+                                uploaded.size_bytes,
+                            )
+                        except Exception as e:
+                            print(f"❌ Drive upload video error: {e}")
+        else:
+            # Legacy local uploads
+            voice_filename = None
+            if "voice_record" in request.files:
+                voice_file = request.files["voice_record"]
+                if voice_file.filename and allowed_file(voice_file.filename, ALLOWED_AUDIO):
+                    voice_filename = f"audio_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(voice_file.filename)}"
+                    voice_file.save(os.path.join(app.config["UPLOAD_FOLDER"], voice_filename))
+
+            image_filenames = []
+            if "images" in request.files:
+                images = request.files.getlist("images")
+                for img in images:
+                    if img.filename and allowed_file(img.filename, ALLOWED_IMAGES):
+                        img_filename = f"img_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(img.filename)}"
+                        img.save(os.path.join(app.config["UPLOAD_FOLDER"], img_filename))
+                        image_filenames.append(img_filename)
+
+            consultation = {
+                "patient_email": session["user"]["email"],
+                "patient_name": session["user"]["name"],
+                "symptoms": request.form.get("symptoms"),
+                "duration": request.form.get("duration"),
+                "severity": request.form.get("severity"),
+                "medical_history": request.form.get("medical_history"),
+                "current_medications": request.form.get("current_medications"),
+                "voice_record": voice_filename,
+                "images": image_filenames,
+                "status": "pending",
+                "doctor_reply": None,
+                "created_at": datetime.now().isoformat()
+            }
+
+            consultation_id = save_consultation(consultation)
+            if not consultation_id:
+                flash("Unable to submit consultation. Please try again.", "danger")
+                return redirect(url_for("patient_consult"))
+
         flash("Consultation submitted successfully!", "success")
         return redirect(url_for("patient_dashboard"))
     
