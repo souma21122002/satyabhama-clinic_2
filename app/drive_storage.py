@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import IO, Any, Dict, Optional, Tuple
 
 from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.auth.transport.requests import AuthorizedSession
@@ -28,7 +29,30 @@ def _load_service_account_info() -> Dict[str, Any]:
         raise DriveConfigError("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON") from exc
 
 
+def _load_oauth_credentials() -> Optional[Credentials]:
+    client_id = (os.getenv("GOOGLE_DRIVE_OAUTH_CLIENT_ID") or "").strip()
+    client_secret = (os.getenv("GOOGLE_DRIVE_OAUTH_CLIENT_SECRET") or "").strip()
+    refresh_token = (os.getenv("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN") or "").strip()
+    token_uri = (os.getenv("GOOGLE_DRIVE_OAUTH_TOKEN_URI") or "https://oauth2.googleapis.com/token").strip()
+
+    if not (client_id and client_secret and refresh_token):
+        return None
+
+    return Credentials(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri=token_uri,
+        client_id=client_id,
+        client_secret=client_secret,
+        scopes=DRIVE_SCOPES,
+    )
+
+
 def get_drive_credentials():
+    oauth_creds = _load_oauth_credentials()
+    if oauth_creds is not None:
+        return oauth_creds
+
     info = _load_service_account_info()
     return service_account.Credentials.from_service_account_info(info, scopes=DRIVE_SCOPES)
 
