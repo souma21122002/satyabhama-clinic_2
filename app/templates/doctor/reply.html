@@ -129,6 +129,8 @@
                 {% set drive_audio = drive_media | selectattr('media_type', 'equalto', 'audio') | list %}
                 {% set drive_video = drive_media | selectattr('media_type', 'equalto', 'video') | list %}
                 {% set drive_images = drive_media | selectattr('media_type', 'equalto', 'image') | list %}
+                {% set drive_pdfs = drive_media | selectattr('media_type', 'equalto', 'pdf') | list %}
+                {% set local_docs = consultation.documents or [] %}
                 
                 <div class="row">
                     <!-- Voice Recording -->
@@ -235,6 +237,55 @@
                         </form>
                     </div>
                     {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if (drive_pdfs and drive_pdfs|length > 0) or (local_docs and local_docs|length > 0) %}
+                <hr class="my-3">
+                <small class="text-muted"><i class="bi bi-file-earmark-pdf text-danger"></i> PDF Reports:</small>
+                <div class="mt-2">
+                    {% if drive_pdfs and drive_pdfs|length > 0 %}
+                    <div class="mb-3">
+                        <div class="fw-semibold small text-muted mb-1">From Drive ({{ drive_pdfs|length }}):</div>
+                        {% for d in drive_pdfs %}
+                        <div class="d-flex align-items-center justify-content-between gap-2 border rounded p-2 mb-2">
+                            <div class="small text-truncate">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                                <a href="/drive/media/{{ d.id }}" target="_blank" class="text-decoration-none">{{ d.file_name or 'PDF report' }}</a>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="/drive/media/{{ d.id }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                <form action="/doctor/delete-drive-media/{{ d.id }}" method="POST" class="d-inline"
+                                      onsubmit="return confirm('Delete PDF permanently from Drive?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if local_docs and local_docs|length > 0 %}
+                    <div class="mb-0">
+                        <div class="fw-semibold small text-muted mb-1">Uploaded locally ({{ local_docs|length }}):</div>
+                        {% for f in local_docs %}
+                        <div class="d-flex align-items-center justify-content-between gap-2 border rounded p-2 mb-2">
+                            <div class="small text-truncate">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                                <a href="/uploads/{{ f }}" target="_blank" class="text-decoration-none">{{ f }}</a>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="/uploads/{{ f }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                <form action="/doctor/delete-media/{{ consultation.id }}/document" method="POST" class="d-inline"
+                                      onsubmit="return confirm('Delete PDF?');">
+                                    <input type="hidden" name="filename" value="{{ f }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>

@@ -467,6 +467,7 @@
             {% set drive_audio = drive_media | selectattr('media_type', 'equalto', 'audio') | list %}
             {% set drive_video = drive_media | selectattr('media_type', 'equalto', 'video') | list %}
             {% set drive_images = drive_media | selectattr('media_type', 'equalto', 'image') | list %}
+            {% set drive_pdfs = drive_media | selectattr('media_type', 'equalto', 'pdf') | list %}
             
             <div class="row">
                 {% if drive_audio and drive_audio|length > 0 %}
@@ -535,6 +536,21 @@
                 <video controls preload="metadata" class="w-100 mt-2" style="max-height: 320px;">
                     <source src="/drive/media/{{ v.id }}" type="{{ v.mime_type or 'video/mp4' }}">
                 </video>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if drive_pdfs and drive_pdfs|length > 0 %}
+            <div class="bg-light p-3 rounded mb-3">
+                <h6><i class="bi bi-file-earmark-pdf text-danger"></i> PDF Reports (Drive) ({{ drive_pdfs|length }})</h6>
+                {% for d in drive_pdfs %}
+                <div class="d-flex align-items-center justify-content-between gap-2 border rounded p-2 mt-2">
+                    <div class="small text-truncate">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                        <a href="/drive/media/{{ d.id }}" target="_blank" class="text-decoration-none">{{ d.file_name or 'View PDF' }}</a>
+                    </div>
+                    <a href="/drive/media/{{ d.id }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                </div>
                 {% endfor %}
             </div>
             {% endif %}

@@ -60,12 +60,16 @@ def init_db():
                 current_medications TEXT,
                 voice_record VARCHAR(255),
                 images TEXT,
+                documents TEXT,
                 status VARCHAR(20) DEFAULT 'pending',
                 doctor_reply JSONB,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (patient_email) REFERENCES users(email)
             )
         """)
+
+        # Ensure new columns exist for older databases
+        cur.execute("ALTER TABLE consultations ADD COLUMN IF NOT EXISTS documents TEXT")
 
         # Consultation media stored in Google Drive (or other backends)
         cur.execute("""
@@ -249,8 +253,8 @@ def save_consultation(consultation):
             cur.execute("""
                 INSERT INTO consultations 
                 (patient_email, patient_name, symptoms, duration, severity, medical_history, 
-                 current_medications, voice_record, images, status, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 current_medications, voice_record, images, documents, status, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (
                 consultation['patient_email'],
@@ -262,6 +266,7 @@ def save_consultation(consultation):
                 consultation.get('current_medications'),
                 consultation.get('voice_record'),
                 json.dumps(consultation.get('images', [])),
+                json.dumps(consultation.get('documents', [])),
                 consultation.get('status', 'pending'),
                 consultation.get('created_at', datetime.now())
             ))
@@ -295,6 +300,10 @@ def load_consultations():
                     cons['images'] = json.loads(cons['images']) if isinstance(cons['images'], str) else cons['images']
                 else:
                     cons['images'] = []
+                if cons.get('documents'):
+                    cons['documents'] = json.loads(cons['documents']) if isinstance(cons['documents'], str) else cons['documents']
+                else:
+                    cons['documents'] = []
                 if cons.get('doctor_reply'):
                     cons['doctor_reply'] = json.loads(cons['doctor_reply']) if isinstance(cons['doctor_reply'], str) else cons['doctor_reply']
                 cons['drive_media'] = media_map.get(int(cons['id']), [])
@@ -326,6 +335,10 @@ def load_patient_consultations(patient_email):
                     cons['images'] = json.loads(cons['images']) if isinstance(cons['images'], str) else cons['images']
                 else:
                     cons['images'] = []
+                if cons.get('documents'):
+                    cons['documents'] = json.loads(cons['documents']) if isinstance(cons['documents'], str) else cons['documents']
+                else:
+                    cons['documents'] = []
                 if cons.get('doctor_reply'):
                     cons['doctor_reply'] = json.loads(cons['doctor_reply']) if isinstance(cons['doctor_reply'], str) else cons['doctor_reply']
                 cons['drive_media'] = media_map.get(int(cons['id']), [])
@@ -356,6 +369,10 @@ def get_consultation_by_id(consultation_id):
                 cons['images'] = json.loads(cons['images']) if isinstance(cons['images'], str) else cons['images']
             else:
                 cons['images'] = []
+            if cons.get('documents'):
+                cons['documents'] = json.loads(cons['documents']) if isinstance(cons['documents'], str) else cons['documents']
+            else:
+                cons['documents'] = []
             if cons.get('doctor_reply'):
                 cons['doctor_reply'] = json.loads(cons['doctor_reply']) if isinstance(cons['doctor_reply'], str) else cons['doctor_reply']
             cons['drive_media'] = list_consultation_media(consultation_id)
@@ -561,6 +578,14 @@ def delete_consultation_media(consultation_id, media_type, filename):
                     if filename in images:
                         images.remove(filename)
                     cur.execute("UPDATE consultations SET images = %s WHERE id = %s", (json.dumps(images), consultation_id))
+            elif media_type in ("document", "pdf"):
+                cur.execute("SELECT documents FROM consultations WHERE id = %s", (consultation_id,))
+                result = cur.fetchone()
+                if result:
+                    docs = json.loads(result[0]) if isinstance(result[0], str) else []
+                    if filename in docs:
+                        docs.remove(filename)
+                    cur.execute("UPDATE consultations SET documents = %s WHERE id = %s", (json.dumps(docs), consultation_id))
             
             conn.commit()
             return True

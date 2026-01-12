@@ -263,6 +263,8 @@
                         {% set drive_audio = drive_media | selectattr('media_type', 'equalto', 'audio') | list %}
                         {% set drive_video = drive_media | selectattr('media_type', 'equalto', 'video') | list %}
                         {% set drive_images = drive_media | selectattr('media_type', 'equalto', 'image') | list %}
+                        {% set drive_pdfs = drive_media | selectattr('media_type', 'equalto', 'pdf') | list %}
+                        {% set local_docs = c.documents or [] %}
                         
                         <div class="d-flex gap-2">
                             {% if c.voice_record %}
@@ -280,12 +282,18 @@
                             {% if drive_video and drive_video|length > 0 %}
                             <span class="badge bg-success"><i class="bi bi-camera-video me-1"></i>{{ drive_video|length }} Videos</span>
                             {% endif %}
+                            {% if drive_pdfs and drive_pdfs|length > 0 %}
+                            <span class="badge bg-dark"><i class="bi bi-file-earmark-pdf me-1"></i>{{ drive_pdfs|length }} PDFs</span>
+                            {% endif %}
+                            {% if local_docs and local_docs|length > 0 %}
+                            <span class="badge bg-dark"><i class="bi bi-file-earmark-pdf me-1"></i>{{ local_docs|length }} PDFs</span>
+                            {% endif %}
                             {% if c.medical_history %}
                             <span class="badge bg-secondary"><i class="bi bi-file-medical me-1"></i>Medical History</span>
                             {% endif %}
                         </div>
 
-                        {% if (drive_media and drive_media|length > 0) or c.voice_record or (c.images and c.images|length > 0) %}
+                        {% if (drive_media and drive_media|length > 0) or c.voice_record or (c.images and c.images|length > 0) or (local_docs and local_docs|length > 0) %}
                         <div class="mt-3">
                             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#attachments{{ c.id }}">
                                 <i class="bi bi-paperclip"></i> View Attachments
@@ -349,6 +357,28 @@
                                         </div>
                                     </div>
                                     {% endif %}
+
+                                    {% if (drive_pdfs and drive_pdfs|length > 0) or (local_docs and local_docs|length > 0) %}
+                                    <div class="mt-3">
+                                        <small class="text-muted"><i class="bi bi-file-earmark-pdf text-danger"></i> PDF Reports:</small>
+                                        <div class="mt-2">
+                                            {% for d in drive_pdfs %}
+                                            <div class="mb-2">
+                                                <a class="btn btn-sm btn-outline-dark" href="/drive/media/{{ d.id }}" target="_blank">
+                                                    <i class="bi bi-file-earmark-pdf"></i> {{ d.file_name or 'View PDF' }}
+                                                </a>
+                                            </div>
+                                            {% endfor %}
+                                            {% for f in local_docs %}
+                                            <div class="mb-2">
+                                                <a class="btn btn-sm btn-outline-dark" href="/uploads/{{ f }}" target="_blank">
+                                                    <i class="bi bi-file-earmark-pdf"></i> {{ f }}
+                                                </a>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -392,6 +422,8 @@
                         {% set drive_audio = drive_media | selectattr('media_type', 'equalto', 'audio') | list %}
                         {% set drive_video = drive_media | selectattr('media_type', 'equalto', 'video') | list %}
                         {% set drive_images = drive_media | selectattr('media_type', 'equalto', 'image') | list %}
+                        {% set drive_pdfs = drive_media | selectattr('media_type', 'equalto', 'pdf') | list %}
+                        {% set local_docs = c.documents or [] %}
                         
                         {% if c.doctor_reply %}
                         <div class="collapse mt-3" id="reply{{ c.id }}">
@@ -418,7 +450,7 @@
                                 </div>
                             </div>
 
-                            {% if (drive_media and drive_media|length > 0) or c.voice_record or (c.images and c.images|length > 0) %}
+                            {% if (drive_media and drive_media|length > 0) or c.voice_record or (c.images and c.images|length > 0) or (local_docs and local_docs|length > 0) %}
                             <div class="bg-light p-3 rounded border mt-3">
                                 <h6 class="mb-2"><i class="bi bi-paperclip"></i> Your Attachments</h6>
 
@@ -475,6 +507,28 @@
                                         <a href="/uploads/{{ img }}" target="_blank">
                                             <img src="/uploads/{{ img }}" style="height: 70px; width: 70px; object-fit: cover; border-radius: 8px; border: 2px solid #ddd;">
                                         </a>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                {% if (drive_pdfs and drive_pdfs|length > 0) or (local_docs and local_docs|length > 0) %}
+                                <div class="mt-3">
+                                    <small class="text-muted">PDF Reports:</small>
+                                    <div class="mt-2">
+                                        {% for d in drive_pdfs %}
+                                        <div class="mb-2">
+                                            <a class="btn btn-sm btn-outline-dark" href="/drive/media/{{ d.id }}" target="_blank">
+                                                <i class="bi bi-file-earmark-pdf"></i> {{ d.file_name or 'View PDF' }}
+                                            </a>
+                                        </div>
+                                        {% endfor %}
+                                        {% for f in local_docs %}
+                                        <div class="mb-2">
+                                            <a class="btn btn-sm btn-outline-dark" href="/uploads/{{ f }}" target="_blank">
+                                                <i class="bi bi-file-earmark-pdf"></i> {{ f }}
+                                            </a>
+                                        </div>
                                         {% endfor %}
                                     </div>
                                 </div>

@@ -114,7 +114,12 @@ class GoogleDriveStorage:
         )
         return created["id"]
 
-    def ensure_patient_and_consultation_folders(self, *, patient_folder_name: str, consultation_id: int) -> Tuple[str, str]:
+    def ensure_patient_and_consultation_folders(
+        self,
+        *,
+        patient_folder_name: str,
+        consultation_id: int,
+    ) -> Tuple[str, str]:
         patient_folder_id = self.get_or_create_folder(parent_id=self.parent_folder_id, name=patient_folder_name)
         consultation_folder_id = self.get_or_create_folder(parent_id=patient_folder_id, name=str(consultation_id))
         return patient_folder_id, consultation_folder_id
@@ -152,4 +157,6 @@ def classify_media_type(mime_type: str) -> str:
         return "audio"
     if mt.startswith("video/"):
         return "video"
+    if mt == "application/pdf" or mt.endswith("/pdf"):
+        return "pdf"
     return "other"

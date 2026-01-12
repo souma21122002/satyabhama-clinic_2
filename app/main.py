@@ -55,6 +55,7 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 ALLOWED_AUDIO = {'webm', 'mp3', 'wav', 'ogg', 'm4a'}
 ALLOWED_IMAGES = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEOS = {'mp4', 'webm', 'mov', 'mkv', 'avi'}
+ALLOWED_DOCS = {'pdf'}
 
 
 def _safe_folder_fragment(value: str) -> str:
@@ -65,12 +66,29 @@ def _safe_folder_fragment(value: str) -> str:
 
 
 def _patient_folder_name(user_id: int, user_name: str) -> str:
+    # Backward-compatible helper (legacy). Prefer phone-based folder naming below.
     return f"{int(user_id):010d}_{_safe_folder_fragment(user_name)}"
+
+
+def _safe_phone_fragment(value: str) -> str:
+    value = (value or "").strip()
+    # Keep digits only for folder stability across formatting.
+    digits = re.sub(r"\D+", "", value)
+    return digits or "no_phone"
+
+
+def _patient_folder_name_v2(phone: str, user_name: str) -> str:
+    return f"{_safe_phone_fragment(phone)}_{_safe_folder_fragment(user_name)}"
 
 
 def _get_drive_storage() -> GoogleDriveStorage | None:
     parent_id = os.getenv("GOOGLE_DRIVE_PARENT_FOLDER_ID", "").strip()
-    if not parent_id or not os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
+    if not parent_id:
+        return None
+
+    has_service_account = bool((os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or "").strip())
+    has_oauth = bool((os.getenv("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN") or "").strip())
+    if not (has_service_account or has_oauth):
         return None
     try:
         return GoogleDriveStorage(parent_id)
@@ -419,6 +437,7 @@ def patient_consult():
                 "current_medications": request.form.get("current_medications"),
                 "voice_record": None,
                 "images": [],
+                "documents": [],
                 "status": "pending",
                 "doctor_reply": None,
                 "created_at": datetime.now().isoformat()
@@ -429,7 +448,7 @@ def patient_consult():
                 flash("Unable to submit consultation. Please try again.", "danger")
                 return redirect(url_for("patient_consult"))
 
-            patient_folder = _patient_folder_name(session["user"]["id"], session["user"]["name"])
+            patient_folder = _patient_folder_name_v2(session["user"].get("phone"), session["user"]["name"])
             try:
                 _, consultation_folder_id = DRIVE_STORAGE.ensure_patient_and_consultation_folders(
                     patient_folder_name=patient_folder,
@@ -509,6 +528,29 @@ def patient_consult():
                             )
                         except Exception as e:
                             print(f"❌ Drive upload video error: {e}")
+
+                # PDF reports
+                for doc in request.files.getlist("reports"):
+                    if doc and doc.filename and allowed_file(doc.filename, ALLOWED_DOCS):
+                        try:
+                            filename = f"report_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(doc.filename)}"
+                            uploaded = DRIVE_STORAGE.upload_file(
+                                folder_id=consultation_folder_id,
+                                filename=filename,
+                                mime_type=doc.mimetype,
+                                fileobj=doc.stream,
+                            )
+                            add_consultation_media(
+                                int(consultation_id),
+                                session["user"]["email"],
+                                uploaded.file_id,
+                                uploaded.name,
+                                uploaded.mime_type,
+                                classify_media_type(uploaded.mime_type),
+                                uploaded.size_bytes,
+                            )
+                        except Exception as e:
+                            print(f"❌ Drive upload PDF error: {e}")
         else:
             # Legacy local uploads
             voice_filename = None
@@ -527,6 +569,15 @@ def patient_consult():
                         img.save(os.path.join(app.config["UPLOAD_FOLDER"], img_filename))
                         image_filenames.append(img_filename)
 
+            document_filenames = []
+            if "reports" in request.files:
+                docs = request.files.getlist("reports")
+                for doc in docs:
+                    if doc.filename and allowed_file(doc.filename, ALLOWED_DOCS):
+                        doc_filename = f"report_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(doc.filename)}"
+                        doc.save(os.path.join(app.config["UPLOAD_FOLDER"], doc_filename))
+                        document_filenames.append(doc_filename)
+
             consultation = {
                 "patient_email": session["user"]["email"],
                 "patient_name": session["user"]["name"],
@@ -537,6 +588,7 @@ def patient_consult():
                 "current_medications": request.form.get("current_medications"),
                 "voice_record": voice_filename,
                 "images": image_filenames,
+                "documents": document_filenames,
                 "status": "pending",
                 "doctor_reply": None,
                 "created_at": datetime.now().isoformat()
@@ -734,6 +786,7 @@ def delete_media(consultation_id, media_type):
         if os.path.exists(filepath):
             os.remove(filepath)
     
+    # Support legacy local uploads (audio/images) plus PDFs stored in consultations.documents
     delete_consultation_media(consultation_id, media_type, filename)
     flash(f"{media_type.capitalize()} deleted", "success")
     return redirect(url_for("doctor_reply", consultation_id=consultation_id))
