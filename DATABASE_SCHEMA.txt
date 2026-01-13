@@ -1,0 +1,84 @@
+Homeopathy Project — Database Schema (SQLite dev / Postgres prod)
+
+Source of truth: init_db() in app/database_local.py (SQLite) and app/database.py (Postgres).
+
+TABLE: users
+- id (PK) INTEGER/ SERIAL
+- name TEXT / VARCHAR(255) NOT NULL
+- email TEXT / VARCHAR(255) UNIQUE NOT NULL
+- password TEXT / VARCHAR(255) NOT NULL
+- phone TEXT / VARCHAR(50)
+- age INTEGER
+- gender TEXT / VARCHAR(20)
+- role TEXT / VARCHAR(20) DEFAULT 'patient'
+- doctor_notes TEXT
+- notes_updated TIMESTAMP
+- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+TABLE: consultations
+- id (PK) INTEGER/ SERIAL
+- patient_email TEXT / VARCHAR(255) NOT NULL (FK -> users.email)
+- patient_name TEXT / VARCHAR(255) NOT NULL
+- symptoms TEXT NOT NULL
+- duration TEXT / VARCHAR(100)
+- severity TEXT / VARCHAR(50)
+- medical_history TEXT
+- current_medications TEXT
+- voice_record TEXT / VARCHAR(255)
+- images TEXT (JSON array stored as string)
+- documents TEXT (JSON array stored as string)
+- status TEXT / VARCHAR(20) DEFAULT 'pending'
+- doctor_reply TEXT (SQLite) / JSONB (Postgres)
+- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+TABLE: consultation_media
+- id (PK) INTEGER/ SERIAL
+- consultation_id INTEGER NOT NULL (FK -> consultations.id ON DELETE CASCADE)
+- patient_email TEXT / VARCHAR(255) NOT NULL (FK -> users.email)
+- drive_file_id TEXT NOT NULL
+- file_name TEXT NOT NULL
+- mime_type TEXT
+- media_type TEXT / VARCHAR(20) NOT NULL
+- size_bytes INTEGER / BIGINT
+- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+Indexes: (consultation_id), (patient_email)
+
+TABLE: case_history
+- id (PK) INTEGER/ SERIAL
+- symptoms TEXT NOT NULL
+- suggested_remedies TEXT
+- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+TABLE: appointments
+- id (PK) INTEGER/ SERIAL
+- patient_id INTEGER NOT NULL (FK -> users.id)
+- doctor_id INTEGER NOT NULL (FK -> users.id)
+- appointment_date DATE NOT NULL
+- appointment_time TIME NOT NULL
+- duration INTEGER DEFAULT 30
+- status TEXT / VARCHAR(20) DEFAULT 'scheduled'
+- reason TEXT
+- notes TEXT (present in Postgres DDL; may vary in older SQLite DB files)
+- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- cancelled_at TIMESTAMP
+- cancellation_reason TEXT
+
+TABLE: doctor_availability
+- id (PK) INTEGER/ SERIAL
+- doctor_id INTEGER NOT NULL (FK -> users.id)
+- availability_date DATE NOT NULL
+- slot_09, slot_10, slot_11, slot_12, slot_13, slot_18, slot_19, slot_20, slot_21, slot_22 (0/1)
+- is_off_day INTEGER (SQLite) / BOOLEAN (Postgres) DEFAULT 0/FALSE
+- off_day_reason TEXT
+- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+Constraint: UNIQUE(doctor_id, availability_date)
+
+TABLE: site_notices
+- id (PK) INTEGER/ SERIAL
+- doctor_id INTEGER / nullable (FK -> users.id)
+- title TEXT / VARCHAR(255) NOT NULL
+- message TEXT NOT NULL
+- is_active INTEGER (SQLite) / BOOLEAN (Postgres) DEFAULT 1/TRUE
+- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
